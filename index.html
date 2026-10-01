@@ -205,6 +205,9 @@
     .item { display: flex; align-items: baseline; gap: 0.5rem; margin: 0; font-weight: normal; }
     .item.claimed { opacity: 0.45; text-decoration: line-through; }
     .item .who { font-size: 0.85rem; text-decoration: none; display: inline-block; }
+    .other input[type="text"] { margin-top: 0.6rem; }
+    #others { margin-top: 0.9rem; }
+    #others ul { margin: 0.4rem 0 0; padding-left: 1.2rem; }
     #snack-submit { justify-self: end; min-width: 14rem; }
 
     /* ---- Music button ---- */
@@ -328,6 +331,15 @@
           </div>
 
           <div id="catalog" class="catalog"></div>
+
+          <div class="category other">
+            <label class="item"><input type="radio" name="item" value="other"> Something else</label>
+            <input type="text" id="other-text" name="custom" maxlength="80" placeholder="Type whatever you want to bring" aria-label="What you are bringing">
+            <div id="others" hidden>
+              <h3>Also being brought</h3>
+              <ul id="others-list"></ul>
+            </div>
+          </div>
 
           <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
 
@@ -461,6 +473,13 @@
     const coverageEl = document.getElementById("coverage");
     const snackButton = document.getElementById("snack-submit");
     const snackStatus = document.getElementById("snack-status");
+    const otherRadio = snackForm.querySelector('input[name="item"][value="other"]');
+    const otherText = document.getElementById("other-text");
+    const othersEl = document.getElementById("others");
+    const othersList = document.getElementById("others-list");
+
+    // Typing in the free-text box selects "Something else".
+    otherText.addEventListener("input", () => { otherRadio.checked = true; });
 
     async function fetchClaims() {
       const res = await fetch(`${ENDPOINT}?action=claims&t=${Date.now()}`);
@@ -523,6 +542,15 @@
         badge.textContent = covered ? "covered" : "needed";
       }
 
+      // Free-text claims never gray anything out; just list them.
+      const others = claims.filter((c) => String(c.item).startsWith("other-") && c.custom);
+      othersList.replaceChildren(...others.map((c) => {
+        const li = document.createElement("li");
+        li.textContent = `${c.custom} (${c.name})`;
+        return li;
+      }));
+      othersEl.hidden = others.length === 0;
+
       coverageEl.className = needed.length ? "needed" : "";
       coverageEl.textContent = needed.length
         ? `Still needed: ${needed.join(", ")}.`
@@ -556,7 +584,7 @@
     snackForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const data = new FormData(snackForm);
-      const item = data.get("item");
+      let item = data.get("item");
       snackStatus.className = "";
       if (!item) {
         snackStatus.className = "error";
@@ -567,6 +595,20 @@
       // The response to a no-cors POST is opaque, so tag the claim with a random ref
       // and read the claims list back to see whether we won the item.
       const ref = Math.random().toString(36).slice(2, 12);
+
+      // Free-text claims get a unique id of their own, so they can never collide.
+      const isOther = item === "other";
+      if (isOther) {
+        if (!String(data.get("custom")).trim()) {
+          snackStatus.className = "error";
+          snackStatus.textContent = "Type what you're bringing.";
+          return;
+        }
+        item = "other-" + ref;
+        data.set("item", item);
+      } else {
+        data.delete("custom");
+      }
       data.append("type", "snack");
       data.append("ref", ref);
 
@@ -580,9 +622,12 @@
         const mine = claims.find((c) => c.item === item);
         if (mine && mine.ref === ref) {
           snackStatus.textContent = "You're on the list. Thank you!";
+          if (isOther) otherText.value = "";
         } else {
           snackStatus.className = "error";
-          snackStatus.textContent = "Someone else just claimed that one. Please pick another.";
+          snackStatus.textContent = isOther
+            ? "That didn't go through. Please try again."
+            : "Someone else just claimed that one. Please pick another.";
         }
       } catch (err) {
         snackStatus.className = "error";

@@ -2,7 +2,7 @@
 // Bound to a Google Sheet. RSVPs go to the first tab; snack claims go to a "Snacks" tab.
 
 const RSVP_HEADERS = ["Timestamp", "Name", "Attending", "Dietary needs"];
-const SNACK_HEADERS = ["Timestamp", "Name", "Item", "Ref", "Meal"];
+const SNACK_HEADERS = ["Timestamp", "Name", "Item", "Ref", "Meal", "Custom"];
 // Keep in sync with MEALS in index.html.
 const MEALS = ["Breakfast", "Second Breakfast", "Elevenses", "Luncheon", "Afternoon Tea", "Dinner", "Supper"];
 
@@ -31,7 +31,7 @@ function doPost(e) {
 function doGet(e) {
   if (e.parameter.action === "claims") {
     const rows = snackSheet().getDataRange().getValues().slice(1);
-    const claims = rows.map((r) => ({ name: r[1], item: r[2], ref: r[3], meal: r[4] }));
+    const claims = rows.map((r) => ({ name: r[1], item: r[2], ref: r[3], meal: r[4], custom: r[5] }));
     return ContentService.createTextOutput(JSON.stringify({ claims }))
       .setMimeType(ContentService.MimeType.JSON);
   }
@@ -52,7 +52,13 @@ function claimSnack(p) {
     if (taken) return text("taken");
 
     const meal = MEALS.indexOf(p.meal) >= 0 ? p.meal : "Any";
-    sheet.appendRow([new Date(), clean(p.name, 100), item, clean(p.ref, 40), meal]);
+
+    // Free-text claims ("other-<ref>") carry whatever the guest typed; catalog items never do.
+    const isOther = item.indexOf("other-") === 0;
+    const custom = isOther ? clean(p.custom, 80) : "";
+    if (isOther && !custom) return text("invalid");
+
+    sheet.appendRow([new Date(), clean(p.name, 100), item, clean(p.ref, 40), meal, custom]);
     return text("ok");
   } finally {
     lock.releaseLock();
@@ -65,8 +71,10 @@ function snackSheet() {
   if (!sheet) {
     sheet = ss.insertSheet("Snacks");
     sheet.appendRow(SNACK_HEADERS);
-  } else if (sheet.getRange(1, 5).getValue() === "") {
-    sheet.getRange(1, 5).setValue("Meal"); // tab created before the Meal column existed
+  } else {
+    // Tabs created before these columns existed get their headers filled in.
+    if (sheet.getRange(1, 5).getValue() === "") sheet.getRange(1, 5).setValue("Meal");
+    if (sheet.getRange(1, 6).getValue() === "") sheet.getRange(1, 6).setValue("Custom");
   }
   return sheet;
 }
