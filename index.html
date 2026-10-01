@@ -5,25 +5,143 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LOTR Marathon RSVP</title>
   <style>
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
-      display: grid;
-      place-items: center;
       background: #1b1610;
       color: #e8d9b0;
       font-family: Georgia, serif;
-      text-align: center;
+      line-height: 1.5;
     }
-    h1 { font-size: 2.5rem; margin-bottom: 0.25rem; }
-    p { opacity: 0.8; }
+    main { max-width: 34rem; margin: 0 auto; padding: 3rem 1rem; }
+    header { text-align: center; margin-bottom: 2rem; }
+    h1 { font-size: 2.25rem; margin: 0 0 0.25rem; }
     .ring { height: 1.1em; vertical-align: middle; }
+    .tagline { opacity: 0.8; margin: 0; }
+    .details {
+      border: 1px solid #5a4a2c;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 2rem;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.25rem 1rem;
+    }
+    .details dt { opacity: 0.7; }
+    .details dd { margin: 0; }
+    .todo { color: #d9a441; }
+    form { display: grid; gap: 1.25rem; }
+    label, legend { display: block; margin-bottom: 0.35rem; font-weight: bold; }
+    fieldset { border: 0; padding: 0; margin: 0; }
+    .choice { display: flex; gap: 1.5rem; }
+    .choice label { font-weight: normal; display: flex; align-items: center; gap: 0.4rem; margin: 0; }
+    input[type="text"], textarea {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      background: #2a2218;
+      color: inherit;
+      border: 1px solid #5a4a2c;
+      border-radius: 6px;
+      font: inherit;
+    }
+    input:focus-visible, textarea:focus-visible, button:focus-visible {
+      outline: 2px solid #d9a441;
+      outline-offset: 2px;
+    }
+    button {
+      padding: 0.75rem 1rem;
+      background: #d9a441;
+      color: #1b1610;
+      border: 0;
+      border-radius: 6px;
+      font: inherit;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; cursor: default; }
+    .hp { position: absolute; left: -9999px; }
+    #status { min-height: 1.5em; text-align: center; margin: 0; }
+    #status.error { color: #e07a5f; }
   </style>
 </head>
 <body>
   <main>
-    <h1>Hello, Middle-earth <img src="assets/onering.png" alt="The One Ring" class="ring"></h1>
-    <p>The LOTR marathon RSVP is coming soon.</p>
+    <header>
+      <h1>The LOTR Marathon <img src="assets/onering.png" alt="The One Ring" class="ring"></h1>
+      <p class="tagline">All three extended editions, about 12 hours. Will you join the Fellowship?</p>
+    </header>
+
+    <dl class="details">
+      <dt>Date</dt><dd class="todo">[DATE TBD]</dd>
+      <dt>Start time</dt><dd class="todo">[TIME TBD]</dd>
+      <dt>Where</dt><dd class="todo">[ADDRESS TBD]</dd>
+    </dl>
+
+    <form id="rsvp">
+      <div>
+        <label for="name">Your name</label>
+        <input type="text" id="name" name="name" required maxlength="100" autocomplete="name">
+      </div>
+
+      <fieldset>
+        <legend>Will you be there?</legend>
+        <div class="choice">
+          <label><input type="radio" name="attending" value="Yes" required> Yes</label>
+          <label><input type="radio" name="attending" value="No"> No</label>
+        </div>
+      </fieldset>
+
+      <div>
+        <label for="dietary">Dietary needs (optional)</label>
+        <textarea id="dietary" name="dietary" rows="3" maxlength="500" placeholder="Allergies, vegetarian, etc."></textarea>
+      </div>
+
+      <!-- Honeypot: real people never see or fill this in -->
+      <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+      <button type="submit" id="submit">Send RSVP</button>
+      <p id="status" role="status"></p>
+    </form>
   </main>
+
+  <script>
+    // Paste your Google Apps Script web app URL here (see README.md).
+    const ENDPOINT = "PASTE_APPS_SCRIPT_URL_HERE";
+
+    const form = document.getElementById("rsvp");
+    const button = document.getElementById("submit");
+    const status = document.getElementById("status");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      status.className = "";
+
+      if (ENDPOINT.startsWith("PASTE_")) {
+        status.className = "error";
+        status.textContent = "RSVP isn't connected yet. Please check back soon.";
+        return;
+      }
+
+      button.disabled = true;
+      status.textContent = "Sending...";
+      try {
+        // no-cors: Apps Script doesn't send CORS headers, so the response is opaque.
+        await fetch(ENDPOINT, {
+          method: "POST",
+          mode: "no-cors",
+          body: new URLSearchParams(new FormData(form)),
+        });
+        form.reset();
+        status.textContent = "Thanks! Your RSVP is in.";
+      } catch (err) {
+        status.className = "error";
+        status.textContent = "Something went wrong. Please try again.";
+        button.disabled = false;
+        return;
+      }
+      button.disabled = false;
+    });
+  </script>
 </body>
 </html>
