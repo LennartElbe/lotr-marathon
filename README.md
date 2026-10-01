@@ -14,6 +14,14 @@ Static site on GitHub Pages: https://lennartelbe.github.io/lotr-marathon/
 
 Responses appear as rows in the first sheet tab. If you edit `Code.gs` later, use **Deploy → Manage deployments → Edit → New version** so the URL stays the same.
 
+## Snack signup
+
+The snack catalog (`CATALOG` in `index.html`) is grouped into savory snacks, sweet snacks, savory drinks, sweet drinks, and caffeine. Claims are stored in a `Snacks` tab that the script creates automatically. The page reads claims back, grays out taken items, and flags any category with no claims as "needed". The server rejects a second claim for the same item, so simultaneous submissions can't double up.
+
+After changing `apps-script/Code.gs`, paste it into the Apps Script editor and use **Deploy → Manage deployments → Edit → New version**. The web app URL stays the same.
+
+Keep item ids in `CATALOG` stable once guests have claimed things, since the sheet stores the id.
+
 ## Still to fill in
 
 - Event address in `index.html` (marked `[ADDRESS TBD]`).

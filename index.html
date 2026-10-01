@@ -63,6 +63,20 @@
     .hp { position: absolute; left: -9999px; }
     #status { min-height: 1.5em; text-align: center; margin: 0; }
     #status.error { color: #e07a5f; }
+
+    .snacks { margin-top: 3rem; border-top: 1px solid #5a4a2c; padding-top: 2rem; }
+    .snacks h2 { font-size: 1.6rem; margin: 0 0 0.25rem; text-align: center; }
+    .snacks .intro { text-align: center; opacity: 0.8; margin: 0 0 1.25rem; }
+    #coverage { text-align: center; margin: 0 0 1.5rem; }
+    #coverage.needed { color: #d9a441; }
+    .category h3 { font-size: 1.1rem; margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.6rem; }
+    .badge { font-size: 0.75rem; font-weight: normal; padding: 0.1rem 0.5rem; border-radius: 999px; border: 1px solid; }
+    .badge.needed { color: #d9a441; border-color: #d9a441; }
+    .badge.covered { color: #9bb67c; border-color: #9bb67c; }
+    .items { display: grid; gap: 0.35rem; }
+    .item { display: flex; align-items: baseline; gap: 0.5rem; margin: 0; font-weight: normal; }
+    .item.claimed { opacity: 0.45; text-decoration: line-through; }
+    .item .who { font-size: 0.85rem; text-decoration: none; display: inline-block; }
   </style>
 </head>
 <body>
@@ -103,6 +117,26 @@
       <button type="submit" id="submit">Send RSVP</button>
       <p id="status" role="status"></p>
     </form>
+
+    <section class="snacks">
+      <h2>Snack Signup</h2>
+      <p class="intro">Twelve hours is a long road. Pick one thing to bring. Taken items are grayed out.</p>
+      <p id="coverage" role="status"></p>
+
+      <form id="snack-form">
+        <div>
+          <label for="snack-name">Your name</label>
+          <input type="text" id="snack-name" name="name" required maxlength="100" autocomplete="name">
+        </div>
+
+        <div id="catalog" class="catalog" style="display: grid; gap: 1.25rem;">Loading the pantry...</div>
+
+        <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+        <button type="submit" id="snack-submit" disabled>Claim it</button>
+        <p id="snack-status" role="status"></p>
+      </form>
+    </section>
   </main>
 
   <script>
@@ -142,6 +176,164 @@
       }
       button.disabled = false;
     });
+
+    // ---- Snack signup ----
+    // Item ids are stored in the sheet; keep them stable once people have claimed them.
+    const CATALOG = [
+      { title: "Savory snacks", items: [
+        ["savory-sausage-rolls", "Sausage rolls (Second Breakfast)"],
+        ["savory-cheese-board", "Cheese and crackers (Shire cheese board)"],
+        ["savory-mushroom-tarts", "Mushroom tarts (Farmer Maggot's mushrooms)"],
+        ["savory-potatoes", "Roast baby potatoes or wedges (Po-ta-toes!)"],
+        ["savory-popcorn", "Popcorn"],
+        ["savory-meat-plate", "Cured meats and bread (Rohan feast plate)"],
+        ["savory-veggie-hummus", "Veggie sticks and hummus"],
+      ]},
+      { title: "Sweet snacks", items: [
+        ["sweet-lembas", "Lembas (honey shortbread)"],
+        ["sweet-seed-cake", "Seed cake"],
+        ["sweet-apple-tarts", "Apple tarts or hand pies"],
+        ["sweet-cookies", "Cookies"],
+        ["sweet-brownies", "Brownies"],
+        ["sweet-fruit", "Fruit platter (Ithilien harvest)"],
+        ["sweet-candy", "Candy and gummies"],
+      ]},
+      { title: "Savory drinks", items: [
+        ["sdrink-ale", "Dark ale or stout (Prancing Pony, 21+)"],
+        ["sdrink-tomato", "Tomato juice or Bloody Mary mix"],
+        ["sdrink-dry-cider", "Dry cider (21+)"],
+        ["sdrink-red-wine", "Red wine (Dorwinion, 21+)"],
+        ["sdrink-broth", "Hot broth or soup in mugs"],
+      ]},
+      { title: "Sweet drinks", items: [
+        ["wdrink-ginger-beer", "Ginger beer (Ent-draught)"],
+        ["wdrink-mead", "Mead (21+)"],
+        ["wdrink-apple-cider", "Sweet or spiced apple cider"],
+        ["wdrink-lemonade", "Lemonade"],
+        ["wdrink-hot-chocolate", "Hot chocolate"],
+        ["wdrink-sparkling-juice", "Sparkling grape juice"],
+      ]},
+      { title: "Caffeine", items: [
+        ["caf-coffee", "Coffee (thermos or urn, we start at 9 AM)"],
+        ["caf-black-tea", "Black tea (for proper tea time)"],
+        ["caf-iced-tea", "Iced tea"],
+        ["caf-cola", "Cola"],
+        ["caf-energy", "Energy drinks"],
+      ]},
+    ];
+
+    const snackForm = document.getElementById("snack-form");
+    const catalogEl = document.getElementById("catalog");
+    const coverageEl = document.getElementById("coverage");
+    const snackButton = document.getElementById("snack-submit");
+    const snackStatus = document.getElementById("snack-status");
+
+    async function fetchClaims() {
+      const res = await fetch(`${ENDPOINT}?action=claims&t=${Date.now()}`);
+      return (await res.json()).claims;
+    }
+
+    function renderCatalog(claims) {
+      const byItem = new Map(claims.map((c) => [c.item, c]));
+      const needed = [];
+      catalogEl.replaceChildren();
+
+      for (const cat of CATALOG) {
+        const section = document.createElement("fieldset");
+        section.className = "category";
+
+        const legend = document.createElement("legend");
+        const heading = document.createElement("h3");
+        heading.textContent = cat.title + " ";
+        const covered = cat.items.some(([id]) => byItem.has(id));
+        const badge = document.createElement("span");
+        badge.className = "badge " + (covered ? "covered" : "needed");
+        badge.textContent = covered ? "covered" : "needed";
+        heading.append(badge);
+        legend.append(heading);
+        section.append(legend);
+        if (!covered) needed.push(cat.title.toLowerCase());
+
+        const list = document.createElement("div");
+        list.className = "items";
+        for (const [id, label] of cat.items) {
+          const claim = byItem.get(id);
+          const row = document.createElement("label");
+          row.className = "item" + (claim ? " claimed" : "");
+
+          const input = document.createElement("input");
+          input.type = "radio";
+          input.name = "item";
+          input.value = id;
+          input.disabled = Boolean(claim);
+          row.append(input, document.createTextNode(label));
+
+          if (claim) {
+            const who = document.createElement("span");
+            who.className = "who";
+            who.textContent = ` (${claim.name})`;
+            row.append(who);
+          }
+          list.append(row);
+        }
+        section.append(list);
+        catalogEl.append(section);
+      }
+
+      coverageEl.className = needed.length ? "needed" : "";
+      coverageEl.textContent = needed.length
+        ? `Still needed: ${needed.join(", ")}.`
+        : "Every category is covered. Extra items are still welcome!";
+      snackButton.disabled = false;
+    }
+
+    async function loadCatalog() {
+      try {
+        renderCatalog(await fetchClaims());
+      } catch (err) {
+        catalogEl.textContent = "Couldn't load the snack list. Please refresh the page.";
+        coverageEl.textContent = "";
+      }
+    }
+
+    snackForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const data = new FormData(snackForm);
+      const item = data.get("item");
+      snackStatus.className = "";
+      if (!item) {
+        snackStatus.className = "error";
+        snackStatus.textContent = "Pick something to bring first.";
+        return;
+      }
+
+      // The response to a no-cors POST is opaque, so tag the claim with a random ref
+      // and read the claims list back to see whether we won the item.
+      const ref = Math.random().toString(36).slice(2, 12);
+      data.append("type", "snack");
+      data.append("ref", ref);
+
+      snackButton.disabled = true;
+      snackStatus.textContent = "Claiming...";
+      try {
+        await fetch(ENDPOINT, { method: "POST", mode: "no-cors", body: new URLSearchParams(data) });
+        const claims = await fetchClaims();
+        renderCatalog(claims);
+        const mine = claims.find((c) => c.item === item);
+        if (mine && mine.ref === ref) {
+          snackStatus.textContent = "You're on the list. Thank you!";
+        } else {
+          snackStatus.className = "error";
+          snackStatus.textContent = "Someone else just claimed that one. Please pick another.";
+        }
+      } catch (err) {
+        snackStatus.className = "error";
+        snackStatus.textContent = "Something went wrong. Please try again.";
+        snackButton.disabled = false;
+      }
+    });
+
+    loadCatalog();
   </script>
 </body>
 </html>
