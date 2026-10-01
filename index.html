@@ -40,7 +40,18 @@
       pointer-events: none;
       background: linear-gradient(rgba(14, 10, 6, 0.55), rgba(14, 10, 6, 0.15) 35%, rgba(14, 10, 6, 0.6));
     }
-    .bg-front { height: 130vh; z-index: -1; object-fit: cover; object-position: center bottom; }
+    /* Blurred on purpose: the eye should rest on Rivendell, the foliage is only context.
+       Overscanned sideways so the blur doesn't fade out at the screen edges. */
+    .bg-front {
+      left: -3rem;
+      width: calc(100% + 6rem);
+      height: 130vh;
+      z-index: -1;
+      object-fit: cover;
+      object-position: center bottom;
+      filter: blur(6px);
+      opacity: 0.92;
+    }
     .page { max-width: 92rem; margin: 0 auto; padding: 0 2.5rem 4rem; }
 
     /* ---- Hero ---- */
@@ -233,8 +244,8 @@
 <body>
   <div class="bg-back" id="bg-back"></div>
   <div class="bg-shade"></div>
-  <!-- Front layer: transparent PNG of foreground foliage. Removed automatically if the file is missing. -->
-  <img class="bg-front" id="bg-front" src="assets/rivendell_front.png" alt="" onerror="this.remove()">
+  <!-- Front layer: out-of-focus foliage frame. Removed automatically if the file is missing. -->
+  <img class="bg-front" id="bg-front" src="assets/plants_frame.png" alt="" onerror="this.remove()">
 
   <div class="page">
     <section class="hero">
