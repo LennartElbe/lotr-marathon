@@ -79,6 +79,16 @@
       color: var(--gold-soft);
     }
     .ring { height: 0.8em; vertical-align: -0.05em; margin-left: 0.2em; }
+    .gandalf {
+      height: 0.8em;
+      width: 0.8em;
+      vertical-align: -0.1em;
+      margin-left: 0.25em;
+      border: 2px solid var(--gold);
+      border-radius: 50%;
+      object-fit: cover;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+    }
     .tagline { font-size: 1.25rem; margin: 1rem 0 2rem; max-width: 34rem; }
     .details { display: flex; flex-wrap: wrap; gap: 1rem 2.5rem; margin: 0; }
     .details > div { border-left: 2px solid var(--gold); padding-left: 0.9rem; }
@@ -306,7 +316,7 @@
     <section class="hero">
       <div class="hero-text">
         <p class="eyebrow">Three films. Twelve hours. One ring.</p>
-        <h1>The Lord of the Rings<img src="assets/onering.png" alt="The One Ring" class="ring"></h1>
+        <h1>The Lord of the Rings<img src="assets/onering.png" alt="The One Ring" class="ring"><img src="assets/gandalf_face.jpg" alt="Gandalf" class="gandalf"></h1>
         <p class="tagline">Will you join the Fellowship of the Ring?</p>
         <dl class="details">
           <div><dt>Date</dt><dd>Saturday, October 10</dd></div>
@@ -1047,33 +1057,39 @@
       startMusic();
     });
 
-    // ---- Easter egg ----
-    // Clicking the One Ring swaps the pixel animation in the hero frame for an embedded video;
-    // clicking it again (or the Back button) restores the animation. (It used to take 20 clicks,
-    // one per Ring of Power forged: 3 Elves + 7 Dwarves + 9 Men + 1. Raise CLICKS_NEEDED to bring
-    // that back.) The iframe only exists while the video is showing, so nothing loads from YouTube
-    // otherwise and swapping back stops the video.
+    // ---- Easter eggs ----
+    // Clicking the One Ring or Gandalf swaps the pixel animation in the hero frame for a video.
+    // Clicking the other one replaces the video; clicking the same one again (or the Back button)
+    // restores the animation. (The ring once took 20 clicks, one per Ring of Power forged:
+    // 3 Elves + 7 Dwarves + 9 Men + 1. Raise CLICKS_NEEDED to bring that back.) The iframe only
+    // exists while a video is showing, so nothing loads from YouTube otherwise and swapping back
+    // stops the video.
     const CLICKS_NEEDED = 1;
-    const EGG_VIDEO = "uE-1RPDqJAY";
+    const EGGS = [
+      { selector: ".ring", video: "uE-1RPDqJAY", title: "Secret video" },
+      { selector: ".gandalf", video: "Sagg08DrO5U", title: "Another secret video" },
+    ];
     const heroArt = document.querySelector(".hero-art");
-    const heroOriginal = [...heroArt.childNodes]; // the animation, put back when the video closes
-    let ringClicks = 0;
-    let videoShowing = false;
+    const heroOriginal = [...heroArt.childNodes]; // the animation, put back when a video closes
+    let currentVideo = null;
     let musicWasPlaying = false;
 
     function showAnimation() {
       heroArt.replaceChildren(...heroOriginal);
-      videoShowing = false;
+      currentVideo = null;
       if (musicWasPlaying) startMusic();
     }
 
-    function showVideo() {
-      musicWasPlaying = !music.paused && !music.muted;
-      music.pause(); // don't talk over the video
+    function showVideo(egg) {
+      // Only note the music state when leaving the animation; while a video is up the music is already paused.
+      if (!currentVideo) {
+        musicWasPlaying = !music.paused && !music.muted;
+        music.pause(); // don't talk over the video
+      }
 
       const frame = document.createElement("iframe");
-      frame.src = `https://www.youtube-nocookie.com/embed/${EGG_VIDEO}?autoplay=1&rel=0`;
-      frame.title = "Secret video";
+      frame.src = `https://www.youtube-nocookie.com/embed/${egg.video}?autoplay=1&rel=0`;
+      frame.title = egg.title;
       frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
       frame.allowFullscreen = true;
       frame.referrerPolicy = "strict-origin-when-cross-origin";
@@ -1085,16 +1101,19 @@
       back.addEventListener("click", showAnimation);
 
       heroArt.replaceChildren(frame, back);
-      videoShowing = true;
+      currentVideo = egg.video;
     }
 
-    document.querySelector(".ring").addEventListener("click", () => {
-      if (videoShowing) { showAnimation(); return; }
-      ringClicks += 1;
-      if (ringClicks < CLICKS_NEEDED) return;
-      ringClicks = 0;
-      showVideo();
-    });
+    for (const egg of EGGS) {
+      let clicks = 0;
+      document.querySelector(egg.selector).addEventListener("click", () => {
+        if (currentVideo === egg.video) { showAnimation(); return; }
+        clicks += 1;
+        if (clicks < CLICKS_NEEDED) return;
+        clicks = 0;
+        showVideo(egg);
+      });
+    }
   </script>
 </body>
 </html>
