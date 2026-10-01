@@ -76,6 +76,20 @@
     .snacks .intro { text-align: center; opacity: 0.8; margin: 0 0 1.25rem; }
     #coverage { text-align: center; margin: 0 0 1.5rem; }
     #coverage.needed { color: #d9a441; }
+    .meals { border: 1px solid #5a4a2c; border-radius: 8px; padding: 0.75rem 1.25rem; margin: 0 0 1.5rem; }
+    .meals h3 { font-size: 1rem; margin: 0 0 0.5rem; }
+    .meals dl { display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 1rem; margin: 0; }
+    .meals dt { opacity: 0.7; }
+    .meals dd { margin: 0; }
+    select {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      background: #2a2218;
+      color: inherit;
+      border: 1px solid #5a4a2c;
+      border-radius: 6px;
+      font: inherit;
+    }
     .category h3 { font-size: 1.1rem; margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.6rem; }
     .badge { font-size: 0.75rem; font-weight: normal; padding: 0.1rem 0.5rem; border-radius: 999px; border: 1px solid; }
     .badge.needed { color: #d9a441; border-color: #d9a441; }
@@ -128,6 +142,12 @@
     <section class="snacks">
       <h2>Snack Signup</h2>
       <p class="intro">Twelve hours is a long road. Pick one thing to bring. Taken items are grayed out.</p>
+
+      <div class="meals">
+        <h3>Hobbit meal times</h3>
+        <dl id="meal-schedule"></dl>
+      </div>
+
       <p id="coverage" role="status"></p>
 
       <form id="snack-form">
@@ -136,7 +156,12 @@
           <input type="text" id="snack-name" name="name" required maxlength="100" autocomplete="name">
         </div>
 
-        <div id="catalog" class="catalog" style="display: grid; gap: 1.25rem;">Loading the pantry...</div>
+        <div>
+          <label for="meal">Which meal is it for?</label>
+          <select id="meal" name="meal"></select>
+        </div>
+
+        <div id="catalog" class="catalog" style="display: grid; gap: 1.25rem;"></div>
 
         <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
 
@@ -221,13 +246,36 @@
         ["wdrink-sparkling-juice", "Sparkling grape juice"],
       ]},
       { title: "Caffeine", items: [
-        ["caf-coffee", "Coffee (thermos or urn, we start at 9 AM)"],
+        ["caf-coffee", "Coffee (thermos or urn)"],
         ["caf-black-tea", "Black tea (for proper tea time)"],
         ["caf-iced-tea", "Iced tea"],
         ["caf-cola", "Cola"],
         ["caf-energy", "Energy drinks"],
       ]},
     ];
+
+    // Hobbit meal schedule. Names are stored in the sheet and validated server-side (Code.gs MEALS).
+    const MEALS = [
+      ["Breakfast", "8:30 AM"],
+      ["Second Breakfast", "9:30 AM"],
+      ["Elevenses", "11:00 AM"],
+      ["Luncheon", "1:00 PM"],
+      ["Afternoon Tea", "3:00 PM"],
+      ["Dinner", "6:00 PM"],
+      ["Supper", "9:00 PM"],
+    ];
+
+    const mealSelect = document.getElementById("meal");
+    const mealSchedule = document.getElementById("meal-schedule");
+    mealSelect.append(new Option("Any meal", ""));
+    for (const [name, time] of MEALS) {
+      const dt = document.createElement("dt");
+      dt.textContent = time;
+      const dd = document.createElement("dd");
+      dd.textContent = name;
+      mealSchedule.append(dt, dd);
+      mealSelect.append(new Option(`${name} (${time})`, name));
+    }
 
     const snackForm = document.getElementById("snack-form");
     const catalogEl = document.getElementById("catalog");
@@ -243,6 +291,7 @@
     function renderCatalog(claims) {
       const byItem = new Map(claims.map((c) => [c.item, c]));
       const needed = [];
+      const selected = snackForm.querySelector('input[name="item"]:checked')?.value;
       catalogEl.replaceChildren();
 
       for (const cat of CATALOG) {
@@ -273,6 +322,7 @@
           input.name = "item";
           input.value = id;
           input.disabled = Boolean(claim);
+          input.checked = id === selected && !claim;
           row.append(input, document.createTextNode(label));
 
           if (claim) {
@@ -294,12 +344,26 @@
       snackButton.disabled = false;
     }
 
+    // Apps Script is slow (2-4s warm, much longer cold), so draw the catalog right away
+    // from the last claims this browser saw, then refresh when the real list arrives.
+    function saveClaims(claims) {
+      try { localStorage.setItem("claims", JSON.stringify(claims)); } catch (err) {}
+    }
+
     async function loadCatalog() {
+      let cached = [];
+      try { cached = JSON.parse(localStorage.getItem("claims") || "[]"); } catch (err) {}
+      renderCatalog(cached);
+      coverageEl.className = "";
+      coverageEl.textContent = "Checking what's already taken...";
+
       try {
-        renderCatalog(await fetchClaims());
+        const claims = await fetchClaims();
+        saveClaims(claims);
+        renderCatalog(claims);
       } catch (err) {
-        catalogEl.textContent = "Couldn't load the snack list. Please refresh the page.";
-        coverageEl.textContent = "";
+        coverageEl.className = "needed";
+        coverageEl.textContent = "Couldn't check what's taken. You can still pick; duplicates are blocked when you submit.";
       }
     }
 
@@ -325,6 +389,7 @@
       try {
         await fetch(ENDPOINT, { method: "POST", mode: "no-cors", body: new URLSearchParams(data) });
         const claims = await fetchClaims();
+        saveClaims(claims);
         renderCatalog(claims);
         const mine = claims.find((c) => c.item === item);
         if (mine && mine.ref === ref) {

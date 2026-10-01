@@ -2,7 +2,9 @@
 // Bound to a Google Sheet. RSVPs go to the first tab; snack claims go to a "Snacks" tab.
 
 const RSVP_HEADERS = ["Timestamp", "Name", "Attending", "Dietary needs"];
-const SNACK_HEADERS = ["Timestamp", "Name", "Item", "Ref"];
+const SNACK_HEADERS = ["Timestamp", "Name", "Item", "Ref", "Meal"];
+// Keep in sync with MEALS in index.html.
+const MEALS = ["Breakfast", "Second Breakfast", "Elevenses", "Luncheon", "Afternoon Tea", "Dinner", "Supper"];
 
 function doPost(e) {
   const p = e.parameter;
@@ -49,7 +51,8 @@ function claimSnack(p) {
     const taken = sheet.getDataRange().getValues().slice(1).some((r) => r[2] === item);
     if (taken) return text("taken");
 
-    sheet.appendRow([new Date(), clean(p.name, 100), item, clean(p.ref, 40)]);
+    const meal = MEALS.indexOf(p.meal) >= 0 ? p.meal : "Any";
+    sheet.appendRow([new Date(), clean(p.name, 100), item, clean(p.ref, 40), meal]);
     return text("ok");
   } finally {
     lock.releaseLock();
@@ -62,6 +65,8 @@ function snackSheet() {
   if (!sheet) {
     sheet = ss.insertSheet("Snacks");
     sheet.appendRow(SNACK_HEADERS);
+  } else if (sheet.getRange(1, 5).getValue() === "") {
+    sheet.getRange(1, 5).setValue("Meal"); // tab created before the Meal column existed
   }
   return sheet;
 }
