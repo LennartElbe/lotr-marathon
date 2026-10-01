@@ -31,7 +31,7 @@ function doPost(e) {
 function doGet(e) {
   if (e.parameter.action === "claims") {
     const rows = snackSheet().getDataRange().getValues().slice(1);
-    const claims = rows.map((r) => ({ name: r[1], item: r[2], ref: r[3] }));
+    const claims = rows.map((r) => ({ name: r[1], item: r[2], ref: r[3], meal: r[4] }));
     return ContentService.createTextOutput(JSON.stringify({ claims }))
       .setMimeType(ContentService.MimeType.JSON);
   }

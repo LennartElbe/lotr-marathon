@@ -296,11 +296,17 @@
     const mealSelect = document.getElementById("meal");
     const mealSchedule = document.getElementById("meal-schedule");
     mealSelect.append(new Option("Any meal", ""));
+    const mealBadges = new Map();
     for (const [name, time] of MEALS) {
       const dt = document.createElement("dt");
       dt.textContent = time;
       const dd = document.createElement("dd");
-      dd.textContent = name;
+      dd.textContent = name + " ";
+      const badge = document.createElement("span");
+      badge.className = "badge needed";
+      badge.textContent = "needed";
+      mealBadges.set(name, badge);
+      dd.append(badge);
       mealSchedule.append(dt, dd);
       mealSelect.append(new Option(`${name} (${time})`, name));
     }
@@ -363,6 +369,13 @@
         }
         section.append(list);
         catalogEl.append(section);
+      }
+
+      // A meal counts as covered once any claim names it; "Any meal" claims don't count.
+      for (const [name, badge] of mealBadges) {
+        const covered = claims.some((c) => c.meal === name);
+        badge.className = "badge " + (covered ? "covered" : "needed");
+        badge.textContent = covered ? "covered" : "needed";
       }
 
       coverageEl.className = needed.length ? "needed" : "";
