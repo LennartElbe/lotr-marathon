@@ -81,6 +81,24 @@
     .snacks .intro { text-align: center; opacity: 0.8; margin: 0 0 1.25rem; }
     #coverage { text-align: center; margin: 0 0 1.5rem; }
     #coverage.needed { color: #d9a441; }
+    .mute {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 10;
+      width: 2.75rem;
+      height: 2.75rem;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(27, 22, 16, 0.82);
+      border: 1px solid #5a4a2c;
+      border-radius: 50%;
+      color: #e8d9b0;
+      font-size: 0.7rem;
+    }
+    .mute[hidden] { display: none; }
+    .mute img { width: 1.5rem; height: 1.5rem; }
     .meals { border: 1px solid #5a4a2c; border-radius: 8px; padding: 0.75rem 1.25rem; margin: 0 0 1.5rem; }
     .meals h3 { font-size: 1rem; margin: 0 0 0.5rem; }
     .meals dl { display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 1rem; margin: 0; }
@@ -175,6 +193,11 @@
       </form>
     </section>
   </main>
+
+  <audio id="music" src="assets/music.mp3" loop preload="auto"></audio>
+  <button type="button" id="mute" class="mute" hidden>
+    <img id="mute-icon" src="assets/sound-on.png" alt="Mute music">
+  </button>
 
   <script>
     // Paste your Google Apps Script web app URL here (see README.md).
@@ -411,6 +434,40 @@
     });
 
     loadCatalog();
+
+    // ---- Background music ----
+    const music = document.getElementById("music");
+    const muteButton = document.getElementById("mute");
+    const muteIcon = document.getElementById("mute-icon");
+    let muted = false;
+    try { muted = localStorage.getItem("muted") === "1"; } catch (err) {}
+    music.volume = 0.5;
+
+    function syncMute() {
+      music.muted = muted;
+      muteIcon.src = muted ? "assets/sound-off.png" : "assets/sound-on.png";
+      muteIcon.alt = muted ? "Unmute music" : "Mute music";
+      muteButton.setAttribute("aria-label", muteIcon.alt);
+    }
+    syncMute();
+
+    // The button only appears once the mp3 has actually loaded.
+    music.addEventListener("canplay", () => { muteButton.hidden = false; }, { once: true });
+
+    // Browsers block sound until the visitor interacts with the page: try now,
+    // then again on the first click, tap, or keypress. Muting keeps the track running
+    // silently so unmuting is instant.
+    const startMusic = () => music.play().catch(() => {});
+    startMusic();
+    addEventListener("pointerdown", startMusic, { once: true });
+    addEventListener("keydown", startMusic, { once: true });
+
+    muteButton.addEventListener("click", () => {
+      muted = !muted;
+      try { localStorage.setItem("muted", muted ? "1" : "0"); } catch (err) {}
+      syncMute();
+      startMusic();
+    });
   </script>
 </body>
 </html>
