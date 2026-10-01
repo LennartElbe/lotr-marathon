@@ -4,93 +4,193 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LOTR Marathon RSVP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --gold: #d9a441;
+      --gold-soft: #f0d58c;
+      --cream: #e8d9b0;
+      --ink: #1b1610;
+      --card: rgba(27, 22, 16, 0.78);
+      --line: rgba(217, 164, 65, 0.35);
+      --display: "Cinzel", Georgia, serif;
+    }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
-      background-color: #1b1610;
-      background-image: linear-gradient(rgba(27, 22, 16, 0.45), rgba(27, 22, 16, 0.45)), url("assets/rivendell.jpg");
+      background-color: var(--ink);
+      background-image:
+        linear-gradient(rgba(14, 10, 6, 0.55), rgba(14, 10, 6, 0.15) 35%, rgba(14, 10, 6, 0.6)),
+        url("assets/rivendell.jpg");
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
       background-attachment: fixed;
-      color: #e8d9b0;
+      color: var(--cream);
       font-family: Georgia, serif;
       line-height: 1.5;
     }
-    main {
-      max-width: 34rem;
-      margin: 2rem auto;
-      padding: 2.5rem 1.5rem;
-      background: rgba(27, 22, 16, 0.82);
-      border-radius: 12px;
-    }
-    @media (max-width: 36rem) { main { margin: 0; border-radius: 0; } }
-    header { text-align: center; margin-bottom: 2rem; }
-    h1 { font-size: 2.25rem; margin: 0 0 0.25rem; }
-    .ring { height: 1.1em; vertical-align: middle; }
-    .tagline { opacity: 0.8; margin: 0; }
-    .details {
-      border: 1px solid #5a4a2c;
-      border-radius: 8px;
-      padding: 1rem 1.25rem;
-      margin-bottom: 2rem;
+    .page { max-width: 92rem; margin: 0 auto; padding: 0 2.5rem 4rem; }
+
+    /* ---- Hero ---- */
+    .hero {
+      min-height: 26rem;
+      padding-top: 4.5rem;
       display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 0.25rem 1rem;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 3rem;
     }
-    .details dt { opacity: 0.7; }
-    .details dd { margin: 0; }
-    .todo { color: #d9a441; }
-    form { display: grid; gap: 1.25rem; }
+    .eyebrow {
+      margin: 0 0 0.75rem;
+      font-family: var(--display);
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      color: var(--gold);
+    }
+    .hero-text { text-shadow: 0 2px 14px rgba(0, 0, 0, 0.85); }
+    h1 {
+      margin: 0;
+      font-family: var(--display);
+      font-weight: 700;
+      font-size: clamp(2.5rem, 5.5vw, 5rem);
+      line-height: 1.05;
+      color: var(--gold-soft);
+    }
+    .ring { height: 0.8em; vertical-align: -0.05em; margin-left: 0.2em; }
+    .tagline { font-size: 1.25rem; margin: 1rem 0 2rem; max-width: 34rem; }
+    .details { display: flex; flex-wrap: wrap; gap: 1rem 2.5rem; margin: 0; }
+    .details > div { border-left: 2px solid var(--gold); padding-left: 0.9rem; }
+    .details dt {
+      font-family: var(--display);
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+    }
+    .details dd { margin: 0; font-size: 1.5rem; }
+    .todo { color: var(--gold); }
+    .hero-art {
+      margin: 0;
+      width: 26rem;
+      padding: 0.5rem;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.55), 0 0 0 4px rgba(217, 164, 65, 0.08);
+    }
+    .hero-art img { display: block; width: 100%; height: auto; border-radius: 6px; }
+
+    /* ---- Cards ---- */
+    .layout {
+      margin-top: 8rem;
+      display: grid;
+      grid-template-columns: 24rem 1fr;
+      gap: 9rem 2.5rem;
+      align-items: start;
+    }
+    .col { display: grid; gap: 9rem; }
+    .card {
+      position: relative;
+      padding: 1.75rem;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+    }
+    h2 {
+      margin: 0 0 0.25rem;
+      font-family: var(--display);
+      font-size: 1.6rem;
+      color: var(--gold-soft);
+    }
+    h3 { font-family: var(--display); }
+    .intro { margin: 0 0 1rem; opacity: 0.8; }
+
+    /* Figures stand on the top edge of the card they belong to. */
+    .stand {
+      position: absolute;
+      bottom: calc(100% - 2px);
+      margin: 0;
+      pointer-events: none;
+      filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6));
+    }
+    .stand img { display: block; width: 100%; height: auto; }
+    .stand.trio { width: 11rem; right: 1.5rem; }
+    .stand.hobbits { width: 14rem; right: 1.5rem; }
+    .stand.fellowship { width: 15rem; right: 2rem; }
+
+    /* ---- Forms ---- */
+    form { display: grid; gap: 1.1rem; }
     label, legend { display: block; margin-bottom: 0.35rem; font-weight: bold; }
-    fieldset { border: 0; padding: 0; margin: 0; }
+    fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
     .choice { display: flex; gap: 1.5rem; }
     .choice label { font-weight: normal; display: flex; align-items: center; gap: 0.4rem; margin: 0; }
-    input[type="text"], textarea {
+    input[type="text"], textarea, select {
       width: 100%;
       padding: 0.6rem 0.75rem;
-      background: #2a2218;
+      background: rgba(42, 34, 24, 0.9);
       color: inherit;
       border: 1px solid #5a4a2c;
       border-radius: 6px;
       font: inherit;
     }
-    input:focus-visible, textarea:focus-visible, button:focus-visible {
-      outline: 2px solid #d9a441;
+    input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible {
+      outline: 2px solid var(--gold);
       outline-offset: 2px;
     }
     button {
-      padding: 0.75rem 1rem;
-      background: #d9a441;
-      color: #1b1610;
+      padding: 0.75rem 1.25rem;
+      background: var(--gold);
+      color: var(--ink);
       border: 0;
       border-radius: 6px;
-      font: inherit;
-      font-weight: bold;
+      font-family: var(--display);
+      font-weight: 700;
+      letter-spacing: 0.08em;
       cursor: pointer;
     }
+    button:hover:not(:disabled) { background: var(--gold-soft); }
     button:disabled { opacity: 0.5; cursor: default; }
     .hp { position: absolute; left: -9999px; }
-    #status { min-height: 1.5em; text-align: center; margin: 0; }
-    #status.error { color: #e07a5f; }
+    #status, #snack-status { min-height: 1.5em; text-align: center; margin: 0; }
+    #status.error, #snack-status.error { color: #e07a5f; }
 
-    .snacks { margin-top: 3rem; border-top: 1px solid #5a4a2c; padding-top: 2rem; }
-    .snacks h2 { font-size: 1.6rem; margin: 0 0 0.25rem; text-align: center; }
-    .snacks .intro { text-align: center; opacity: 0.8; margin: 0 0 1.25rem; }
-    #coverage { text-align: center; margin: 0 0 1.5rem; }
-    #coverage.needed { color: #d9a441; }
-    /* Decorative figures: inline and centered on narrow screens, beside the content on wide ones. */
-    .side { margin: 1.5rem auto 0; max-width: min(100%, 18rem); }
-    .side img { display: block; width: 100%; height: auto; border-radius: 6px; }
-    @media (min-width: 72rem) {
-      .has-side { position: relative; }
-      .side { position: absolute; top: 0; width: 16rem; margin: 0; max-width: none; }
-      .side.left { right: calc(100% + 3rem); }
-      .side.right { left: calc(100% + 3rem); }
-      .snacks .side { top: 2rem; }
+    /* ---- Meals ---- */
+    .meals h3 { font-size: 1rem; margin: 0 0 0.75rem; color: var(--gold-soft); }
+    .meals dl { display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 1.25rem; margin: 0; }
+    .meals dt { opacity: 0.7; font-variant-numeric: tabular-nums; }
+    .meals dd { margin: 0; }
+
+    /* ---- Snack catalog ---- */
+    .snack-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    #coverage { margin: 0 0 1.25rem; }
+    #coverage.needed { color: var(--gold); }
+    .catalog { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
+    .category {
+      padding: 0.9rem 1rem 1rem;
+      border: 1px solid rgba(217, 164, 65, 0.2);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.18);
     }
+    .category h3 { font-size: 1rem; margin: 0; display: flex; align-items: center; gap: 0.6rem; }
+    .category legend { padding: 0; margin-bottom: 0.6rem; }
+    .badge { font-family: Georgia, serif; font-size: 0.75rem; font-weight: normal; padding: 0.1rem 0.5rem; border-radius: 999px; border: 1px solid; }
+    .badge.needed { color: var(--gold); border-color: var(--gold); }
+    .badge.covered { color: #9bb67c; border-color: #9bb67c; }
+    .items { display: grid; gap: 0.4rem; }
+    .item { display: flex; align-items: baseline; gap: 0.5rem; margin: 0; font-weight: normal; }
+    .item.claimed { opacity: 0.45; text-decoration: line-through; }
+    .item .who { font-size: 0.85rem; text-decoration: none; display: inline-block; }
+    #snack-submit { justify-self: end; min-width: 14rem; }
+
+    /* ---- Music button ---- */
     .mute {
       position: fixed;
       top: 1rem;
@@ -101,122 +201,119 @@
       padding: 0;
       display: grid;
       place-items: center;
-      background: rgba(27, 22, 16, 0.82);
-      border: 1px solid #5a4a2c;
+      background: var(--card);
+      border: 1px solid var(--line);
       border-radius: 50%;
-      color: #e8d9b0;
+      color: var(--cream);
       font-size: 0.7rem;
     }
     .mute[hidden] { display: none; }
     .mute img { width: 1.5rem; height: 1.5rem; }
-    .meals { border: 1px solid #5a4a2c; border-radius: 8px; padding: 0.75rem 1.25rem; margin: 0 0 1.5rem; }
-    .meals h3 { font-size: 1rem; margin: 0 0 0.5rem; }
-    .meals dl { display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 1rem; margin: 0; }
-    .meals dt { opacity: 0.7; }
-    .meals dd { margin: 0; }
-    select {
-      width: 100%;
-      padding: 0.6rem 0.75rem;
-      background: #2a2218;
-      color: inherit;
-      border: 1px solid #5a4a2c;
-      border-radius: 6px;
-      font: inherit;
+
+    /* ---- Narrow screens: single column, still usable but not the priority ---- */
+    @media (max-width: 64rem) {
+      .page { padding: 0 1rem 3rem; }
+      .hero { grid-template-columns: 1fr; padding-top: 4rem; min-height: 0; gap: 2rem; }
+      .hero-art { width: 100%; max-width: 26rem; }
+      .layout { grid-template-columns: 1fr; margin-top: 6rem; gap: 7rem; }
+      .col { gap: 7rem; }
+      .snack-row { grid-template-columns: 1fr; }
+      #snack-submit { justify-self: stretch; }
     }
-    .category h3 { font-size: 1.1rem; margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.6rem; }
-    .badge { font-size: 0.75rem; font-weight: normal; padding: 0.1rem 0.5rem; border-radius: 999px; border: 1px solid; }
-    .badge.needed { color: #d9a441; border-color: #d9a441; }
-    .badge.covered { color: #9bb67c; border-color: #9bb67c; }
-    .items { display: grid; gap: 0.35rem; }
-    .item { display: flex; align-items: baseline; gap: 0.5rem; margin: 0; font-weight: normal; }
-    .item.claimed { opacity: 0.45; text-decoration: line-through; }
-    .item .who { font-size: 0.85rem; text-decoration: none; display: inline-block; }
   </style>
 </head>
 <body>
-  <main>
-    <header class="has-side">
-      <h1>The LOTR Marathon <img src="assets/onering.png" alt="The One Ring" class="ring"></h1>
-      <p class="tagline">All three extended editions, about 12 hours. Will you join the Fellowship?</p>
-      <figure class="side left">
+  <div class="page">
+    <section class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">Three films. Twelve hours. One ring.</p>
+        <h1>The Lord of the Rings Marathon <img src="assets/onering.png" alt="The One Ring" class="ring"></h1>
+        <p class="tagline">All three extended editions, about 12 hours. Will you join the Fellowship?</p>
+        <dl class="details">
+          <div><dt>Date</dt><dd>Saturday, October 10</dd></div>
+          <div><dt>Start</dt><dd>8:30 AM</dd></div>
+          <div><dt>Where</dt><dd class="todo">[ADDRESS TBD]</dd></div>
+        </dl>
+      </div>
+      <figure class="hero-art">
         <img src="assets/fellowship_walking.gif" alt="Pixel art of the Fellowship walking across a bridge in Rivendell">
       </figure>
-      <figure class="side right">
-        <img src="assets/fellowship_standing.png" alt="Pixel art of the nine members of the Fellowship standing together">
-      </figure>
-    </header>
-
-    <dl class="details">
-      <dt>Date</dt><dd>Saturday, October 10</dd>
-      <dt>Start time</dt><dd>8:30 AM</dd>
-      <dt>Where</dt><dd class="todo">[ADDRESS TBD]</dd>
-    </dl>
-
-    <section class="has-side">
-    <figure class="side right">
-      <img src="assets/trio_standing.png" alt="Pixel art of Legolas, Gimli and Aragorn standing together">
-    </figure>
-    <form id="rsvp">
-      <div>
-        <label for="name">Your name</label>
-        <input type="text" id="name" name="name" required maxlength="100" autocomplete="name">
-      </div>
-
-      <fieldset>
-        <legend>Will you be there?</legend>
-        <div class="choice">
-          <label><input type="radio" name="attending" value="Yes" required> Yes</label>
-          <label><input type="radio" name="attending" value="No"> No</label>
-        </div>
-      </fieldset>
-
-      <div>
-        <label for="dietary">Dietary needs (optional)</label>
-        <textarea id="dietary" name="dietary" rows="3" maxlength="500" placeholder="Allergies, vegetarian, etc."></textarea>
-      </div>
-
-      <!-- Honeypot: real people never see or fill this in -->
-      <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
-
-      <button type="submit" id="submit">Send RSVP</button>
-      <p id="status" role="status"></p>
-    </form>
     </section>
 
-    <section class="snacks has-side">
-      <figure class="side left">
-        <img src="assets/hobbits_standing.png" alt="Pixel art of the four hobbits standing in a row">
-      </figure>
-      <h2>Snack Signup</h2>
-      <p class="intro">Twelve hours is a long road. Pick one thing to bring. Taken items are grayed out.</p>
+    <div class="layout">
+      <div class="col">
+        <section class="card">
+          <figure class="stand trio">
+            <img src="assets/trio_standing.png" alt="Pixel art of Legolas, Gimli and Aragorn standing together">
+          </figure>
+          <h2>RSVP</h2>
+          <p class="intro">Tell us you're coming.</p>
+          <form id="rsvp">
+            <div>
+              <label for="name">Your name</label>
+              <input type="text" id="name" name="name" required maxlength="100" autocomplete="name">
+            </div>
 
-      <div class="meals">
-        <h3>Hobbit meal times</h3>
-        <dl id="meal-schedule"></dl>
+            <fieldset>
+              <legend>Will you be there?</legend>
+              <div class="choice">
+                <label><input type="radio" name="attending" value="Yes" required> Yes</label>
+                <label><input type="radio" name="attending" value="No"> No</label>
+              </div>
+            </fieldset>
+
+            <div>
+              <label for="dietary">Dietary needs (optional)</label>
+              <textarea id="dietary" name="dietary" rows="3" maxlength="500" placeholder="Allergies, vegetarian, etc."></textarea>
+            </div>
+
+            <!-- Honeypot: real people never see or fill this in -->
+            <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+            <button type="submit" id="submit">Send RSVP</button>
+            <p id="status" role="status"></p>
+          </form>
+        </section>
+
+        <section class="card meals">
+          <figure class="stand hobbits">
+            <img src="assets/hobbits_standing.png" alt="Pixel art of the four hobbits standing in a row">
+          </figure>
+          <h3>Hobbit meal times</h3>
+          <dl id="meal-schedule"></dl>
+        </section>
       </div>
 
-      <p id="coverage" role="status"></p>
+      <section class="card snacks">
+        <figure class="stand fellowship">
+          <img src="assets/fellowship_standing.png" alt="Pixel art of the nine members of the Fellowship standing together">
+        </figure>
+        <h2>Snack Signup</h2>
+        <p class="intro">Twelve hours is a long road. Pick one thing to bring. Taken items are grayed out.</p>
+        <p id="coverage" role="status"></p>
 
-      <form id="snack-form">
-        <div>
-          <label for="snack-name">Your name</label>
-          <input type="text" id="snack-name" name="name" required maxlength="100" autocomplete="name">
-        </div>
+        <form id="snack-form">
+          <div class="snack-row">
+            <div>
+              <label for="snack-name">Your name</label>
+              <input type="text" id="snack-name" name="name" required maxlength="100" autocomplete="name">
+            </div>
+            <div>
+              <label for="meal">Which meal is it for?</label>
+              <select id="meal" name="meal"></select>
+            </div>
+          </div>
 
-        <div>
-          <label for="meal">Which meal is it for?</label>
-          <select id="meal" name="meal"></select>
-        </div>
+          <div id="catalog" class="catalog"></div>
 
-        <div id="catalog" class="catalog" style="display: grid; gap: 1.25rem;"></div>
+          <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
 
-        <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
-
-        <button type="submit" id="snack-submit" disabled>Claim it</button>
-        <p id="snack-status" role="status"></p>
-      </form>
-    </section>
-  </main>
+          <button type="submit" id="snack-submit" disabled>Claim it</button>
+          <p id="snack-status" role="status"></p>
+        </form>
+      </section>
+    </div>
+  </div>
 
   <audio id="music" src="assets/Concerning%20Hobbits.mp3" loop preload="auto"></audio>
   <button type="button" id="mute" class="mute" hidden>
