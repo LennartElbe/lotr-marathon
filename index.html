@@ -40,18 +40,18 @@
       pointer-events: none;
       background: linear-gradient(rgba(14, 10, 6, 0.55), rgba(14, 10, 6, 0.15) 35%, rgba(14, 10, 6, 0.6));
     }
-    /* Blurred on purpose: the eye should rest on Rivendell, the foliage is only context.
-       Overscanned sideways so the blur doesn't fade out at the screen edges. */
+    /* Foliage bands hug the left and right screen edges (the frame, rotated 90 degrees and split in two).
+       Blurred on purpose: the eye should rest on Rivendell, the foliage is only context.
+       Overscanned past the edges so the blur doesn't fade out at the screen border. */
     .bg-front {
-      left: -3rem;
-      width: calc(100% + 6rem);
+      width: auto;
       height: 130vh;
       z-index: -1;
-      object-fit: cover;
-      object-position: center bottom;
       filter: blur(6px);
       opacity: 0.92;
     }
+    .bg-front.left { left: -3rem; }
+    .bg-front.right { left: auto; right: -3rem; }
     .page { max-width: 92rem; margin: 0 auto; padding: 0 2.5rem 4rem; }
 
     /* ---- Hero ---- */
@@ -244,8 +244,9 @@
 <body>
   <div class="bg-back" id="bg-back"></div>
   <div class="bg-shade"></div>
-  <!-- Front layer: out-of-focus foliage frame. Removed automatically if the file is missing. -->
-  <img class="bg-front" id="bg-front" src="assets/plants_frame.png" alt="" onerror="this.remove()">
+  <!-- Front layers: out-of-focus foliage on each side. Each removes itself if its file is missing. -->
+  <img class="bg-front left" id="bg-front-l" src="assets/plants_left.png" alt="" onerror="this.remove()">
+  <img class="bg-front right" id="bg-front-r" src="assets/plants_right.png" alt="" onerror="this.remove()">
 
   <div class="page">
     <section class="hero">
@@ -599,7 +600,8 @@
     // taller than the viewport by the same amount so no gap shows at the bottom.
     const LAYERS = [
       [document.getElementById("bg-back"), 10],
-      [document.getElementById("bg-front"), 30],
+      [document.getElementById("bg-front-l"), 30],
+      [document.getElementById("bg-front-r"), 30],
     ];
 
     if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
