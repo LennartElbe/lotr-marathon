@@ -16,4 +16,4 @@ Responses appear as rows in the first sheet tab. If you edit `Code.gs` later, us
 
 ## Still to fill in
 
-- Event date, time, and address in `index.html` (marked `[... TBD]`).
+- Event address in `index.html` (marked `[ADDRESS TBD]`).
