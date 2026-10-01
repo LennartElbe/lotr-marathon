@@ -81,6 +81,16 @@
     .snacks .intro { text-align: center; opacity: 0.8; margin: 0 0 1.25rem; }
     #coverage { text-align: center; margin: 0 0 1.5rem; }
     #coverage.needed { color: #d9a441; }
+    /* Decorative figures: inline and centered on narrow screens, beside the content on wide ones. */
+    .side { margin: 1.5rem auto 0; max-width: min(100%, 18rem); }
+    .side img { display: block; width: 100%; height: auto; border-radius: 6px; }
+    @media (min-width: 72rem) {
+      .has-side { position: relative; }
+      .side { position: absolute; top: 0; width: 16rem; margin: 0; max-width: none; }
+      .side.left { right: calc(100% + 3rem); }
+      .side.right { left: calc(100% + 3rem); }
+      .snacks .side { top: 2rem; }
+    }
     .mute {
       position: fixed;
       top: 1rem;
@@ -125,9 +135,15 @@
 </head>
 <body>
   <main>
-    <header>
+    <header class="has-side">
       <h1>The LOTR Marathon <img src="assets/onering.png" alt="The One Ring" class="ring"></h1>
       <p class="tagline">All three extended editions, about 12 hours. Will you join the Fellowship?</p>
+      <figure class="side left">
+        <img src="assets/fellowship_walking.gif" alt="Pixel art of the Fellowship walking across a bridge in Rivendell">
+      </figure>
+      <figure class="side right">
+        <img src="assets/fellowship_standing.png" alt="Pixel art of the nine members of the Fellowship standing together">
+      </figure>
     </header>
 
     <dl class="details">
@@ -136,6 +152,10 @@
       <dt>Where</dt><dd class="todo">[ADDRESS TBD]</dd>
     </dl>
 
+    <section class="has-side">
+    <figure class="side right">
+      <img src="assets/trio_standing.png" alt="Pixel art of Legolas, Gimli and Aragorn standing together">
+    </figure>
     <form id="rsvp">
       <div>
         <label for="name">Your name</label>
@@ -161,8 +181,12 @@
       <button type="submit" id="submit">Send RSVP</button>
       <p id="status" role="status"></p>
     </form>
+    </section>
 
-    <section class="snacks">
+    <section class="snacks has-side">
+      <figure class="side left">
+        <img src="assets/hobbits_standing.png" alt="Pixel art of the four hobbits standing in a row">
+      </figure>
       <h2>Snack Signup</h2>
       <p class="intro">Twelve hours is a long road. Pick one thing to bring. Taken items are grayed out.</p>
 
