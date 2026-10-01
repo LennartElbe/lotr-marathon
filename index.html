@@ -235,11 +235,28 @@
     input[type="file"] { width: 100%; font: inherit; color: inherit; }
 
     /* ---- Music button ---- */
-    .mute {
+    .music {
       position: fixed;
       top: 1rem;
       right: 1rem;
       z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .music[hidden] { display: none; }
+    .music select {
+      width: auto;
+      max-width: 11rem;
+      padding: 0.55rem 0.9rem;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--cream);
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .mute {
       width: 2.75rem;
       height: 2.75rem;
       padding: 0;
@@ -251,7 +268,6 @@
       color: var(--cream);
       font-size: 0.7rem;
     }
-    .mute[hidden] { display: none; }
     .mute img { width: 1.5rem; height: 1.5rem; }
 
     /* ---- Narrow screens: single column, still usable but not the priority ---- */
@@ -426,10 +442,13 @@
     </section>
   </div>
 
-  <audio id="music" src="assets/intro.mp3" loop preload="auto"></audio>
-  <button type="button" id="mute" class="mute" hidden>
-    <img id="mute-icon" src="assets/sound_on.ico" alt="Mute music">
-  </button>
+  <audio id="music" loop preload="auto"></audio>
+  <div class="music" id="music-controls" hidden>
+    <select id="track" aria-label="Choose music"></select>
+    <button type="button" id="mute" class="mute">
+      <img id="mute-icon" src="assets/sound_on.ico" alt="Mute music">
+    </button>
+  </div>
 
   <script>
     // Paste your Google Apps Script web app URL here (see README.md).
@@ -903,6 +922,20 @@
     try { muted = localStorage.getItem("muted") === "1"; } catch (err) {}
     music.volume = 0.5;
 
+    const TRACKS = [
+      ["assets/intro.mp3", "Intro"],
+      ["assets/Concerning%20Hobbits.mp3", "Concerning Hobbits"],
+    ];
+    const trackSelect = document.getElementById("track");
+    for (const [src, label] of TRACKS) trackSelect.append(new Option(label, src));
+
+    let track = TRACKS[0][0];
+    try {
+      const saved = localStorage.getItem("track");
+      if (TRACKS.some(([src]) => src === saved)) track = saved;
+    } catch (err) {}
+    trackSelect.value = track;
+
     function syncMute() {
       music.muted = muted;
       muteIcon.src = muted ? "assets/sound_off.png" : "assets/sound_on.ico";
@@ -911,8 +944,9 @@
     }
     syncMute();
 
-    // The button only appears once the mp3 has actually loaded.
-    music.addEventListener("canplay", () => { muteButton.hidden = false; }, { once: true });
+    // The controls only appear once an mp3 has actually loaded.
+    music.addEventListener("canplay", () => { document.getElementById("music-controls").hidden = false; }, { once: true });
+    music.src = track;
 
     // Browsers block sound until the visitor interacts with the page: try now,
     // then again on the first click, tap, or keypress. Muting keeps the track running
@@ -921,6 +955,12 @@
     startMusic();
     addEventListener("pointerdown", startMusic, { once: true });
     addEventListener("keydown", startMusic, { once: true });
+
+    trackSelect.addEventListener("change", () => {
+      try { localStorage.setItem("track", trackSelect.value); } catch (err) {}
+      music.src = trackSelect.value;
+      startMusic();
+    });
 
     muteButton.addEventListener("click", () => {
       muted = !muted;
