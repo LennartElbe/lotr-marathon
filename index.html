@@ -41,14 +41,12 @@
       background: linear-gradient(rgba(14, 10, 6, 0.55), rgba(14, 10, 6, 0.15) 35%, rgba(14, 10, 6, 0.6));
     }
     /* Foliage bands hug the left and right screen edges (the frame, rotated 90 degrees and split in two).
-       Blurred on purpose: the eye should rest on Rivendell, the foliage is only context.
-       Overscanned past the edges so the blur doesn't fade out at the screen border. */
+       The blur, darkening and opacity are baked into the image files: a live CSS blur on a fixed,
+       scrolling layer made the browser repaint it for seconds. Overscanned past the screen edges. */
     .bg-front {
       width: auto;
       height: 130vh;
       z-index: -1;
-      filter: blur(6px);
-      opacity: 0.92;
     }
     .bg-front.left { left: -3rem; }
     .bg-front.right { left: auto; right: -3rem; }
