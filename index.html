@@ -1056,10 +1056,11 @@
     });
 
     // ---- Easter egg ----
-    // 20 clicks on the One Ring, one per Ring of Power forged (3 Elves + 7 Dwarves + 9 Men + 1),
-    // opens an embedded video. The iframe only exists while the dialog is open, so nothing loads
-    // from YouTube otherwise and closing it stops the video.
-    const RINGS_FORGED = 20;
+    // Clicking the One Ring opens an embedded video. (It used to take 20 clicks, one per Ring of
+    // Power forged: 3 Elves + 7 Dwarves + 9 Men + 1. Raise CLICKS_NEEDED to bring that back.)
+    // The iframe only exists while the dialog is open, so nothing loads from YouTube otherwise
+    // and closing it stops the video.
+    const CLICKS_NEEDED = 1;
     const EGG_VIDEO = "uE-1RPDqJAY";
     const egg = document.getElementById("egg");
     const eggFrame = document.getElementById("egg-frame");
@@ -1068,7 +1069,7 @@
 
     document.querySelector(".ring").addEventListener("click", () => {
       ringClicks += 1;
-      if (ringClicks < RINGS_FORGED) return;
+      if (ringClicks < CLICKS_NEEDED) return;
       ringClicks = 0;
 
       musicWasPlaying = !music.paused && !music.muted;
