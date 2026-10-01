@@ -23,7 +23,3 @@ Guests also pick which hobbit meal their item is for (`MEALS` in `index.html`, m
 After changing `apps-script/Code.gs`, paste it into the Apps Script editor and use **Deploy → Manage deployments → Edit → New version**. The web app URL stays the same.
 
 Keep item ids in `CATALOG` stable once guests have claimed things, since the sheet stores the id.
-
-## Still to fill in
-
-- Event address in `index.html` (marked `[ADDRESS TBD]`).
