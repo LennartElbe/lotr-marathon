@@ -239,6 +239,13 @@
     .fav-gallery figcaption { font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem; }
     input[type="file"] { width: 100%; font: inherit; color: inherit; }
 
+    /* ---- Easter egg video ---- */
+    .egg { width: min(92vw, 62rem); padding: 0.75rem; background: var(--ink); border: 1px solid var(--line); border-radius: 10px; color: var(--cream); }
+    .egg::backdrop { background: rgba(0, 0, 0, 0.8); }
+    .egg-frame { aspect-ratio: 16 / 9; }
+    .egg-frame iframe { width: 100%; height: 100%; border: 0; border-radius: 6px; }
+    .egg-close { display: block; margin: 0 0 0.6rem auto; padding: 0.4rem 1rem; font-size: 0.8rem; }
+
     /* ---- Music button ---- */
     .music {
       position: fixed;
@@ -302,8 +309,8 @@
     <section class="hero">
       <div class="hero-text">
         <p class="eyebrow">Three films. Twelve hours. One ring.</p>
-        <h1>The Lord of the Rings Marathon <img src="assets/onering.png" alt="The One Ring" class="ring"></h1>
-        <p class="tagline">All three extended editions, about 12 hours. Will you join the Fellowship?</p>
+        <h1>The Lord of the Rings<img src="assets/onering.png" alt="The One Ring" class="ring"></h1>
+        <p class="tagline">Will you join the Fellowship of the Ring?</p>
         <dl class="details">
           <div><dt>Date</dt><dd>Saturday, October 10</dd></div>
           <div><dt>Start</dt><dd>8:30 AM</dd></div>
@@ -454,6 +461,11 @@
       </div>
     </section>
   </div>
+
+  <dialog id="egg" class="egg" aria-label="Secret video">
+    <button type="button" id="egg-close" class="egg-close" aria-label="Close video">Close</button>
+    <div id="egg-frame" class="egg-frame"></div>
+  </dialog>
 
   <audio id="music" loop preload="auto"></audio>
   <div class="music" id="music-controls" hidden>
@@ -1042,6 +1054,42 @@
       syncMute();
       startMusic();
     });
+
+    // ---- Easter egg ----
+    // 20 clicks on the One Ring, one per Ring of Power forged (3 Elves + 7 Dwarves + 9 Men + 1),
+    // opens an embedded video. The iframe only exists while the dialog is open, so nothing loads
+    // from YouTube otherwise and closing it stops the video.
+    const RINGS_FORGED = 20;
+    const EGG_VIDEO = "uE-1RPDqJAY";
+    const egg = document.getElementById("egg");
+    const eggFrame = document.getElementById("egg-frame");
+    let ringClicks = 0;
+    let musicWasPlaying = false;
+
+    document.querySelector(".ring").addEventListener("click", () => {
+      ringClicks += 1;
+      if (ringClicks < RINGS_FORGED) return;
+      ringClicks = 0;
+
+      musicWasPlaying = !music.paused && !music.muted;
+      music.pause(); // don't talk over the video
+
+      const frame = document.createElement("iframe");
+      frame.src = `https://www.youtube-nocookie.com/embed/${EGG_VIDEO}?autoplay=1&rel=0`;
+      frame.title = "Secret video";
+      frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+      frame.allowFullscreen = true;
+      frame.referrerPolicy = "strict-origin-when-cross-origin";
+      eggFrame.replaceChildren(frame);
+      egg.showModal();
+    });
+
+    egg.addEventListener("close", () => {
+      eggFrame.replaceChildren(); // removing the iframe stops playback
+      if (musicWasPlaying) startMusic();
+    });
+    document.getElementById("egg-close").addEventListener("click", () => egg.close());
+    egg.addEventListener("click", (e) => { if (e.target === egg) egg.close(); }); // click the backdrop
   </script>
 </body>
 </html>
