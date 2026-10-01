@@ -944,6 +944,28 @@
     }
     syncMute();
 
+    // Remember how far into the track we were (about once a second) so a reload resumes there.
+    // Only the first load of a visit seeks; picking a different track starts it from the beginning.
+    let resumeAt = 0;
+    try {
+      const pos = JSON.parse(localStorage.getItem("musicPos") || "null");
+      if (pos && pos.src === track && pos.t > 0) resumeAt = pos.t;
+    } catch (err) {}
+    music.addEventListener("loadedmetadata", () => {
+      if (resumeAt && resumeAt < music.duration - 2) music.currentTime = resumeAt;
+      resumeAt = 0;
+    });
+
+    let lastSave = 0;
+    const savePosition = (t = music.currentTime) => {
+      try { localStorage.setItem("musicPos", JSON.stringify({ src: trackSelect.value, t })); } catch (err) {}
+    };
+    music.addEventListener("timeupdate", () => {
+      const now = Date.now();
+      if (now - lastSave > 1000) { lastSave = now; savePosition(); }
+    });
+    addEventListener("pagehide", () => savePosition());
+
     // The controls only appear once an mp3 has actually loaded.
     music.addEventListener("canplay", () => { document.getElementById("music-controls").hidden = false; }, { once: true });
     music.src = track;
@@ -959,6 +981,7 @@
     trackSelect.addEventListener("change", () => {
       try { localStorage.setItem("track", trackSelect.value); } catch (err) {}
       music.src = trackSelect.value;
+      savePosition(0);
       startMusic();
     });
 
