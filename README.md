@@ -22,7 +22,7 @@ Guests also pick which hobbit meal their item is for (`MEALS` in `index.html`, m
 
 ## Fellowship Favorites
 
-A card where each guest answers two questions (favorite character, favorite scene). Answers go to a `Favorites` tab created automatically, one row per name: submitting again with the same name replaces the earlier answer. The results board stays hidden in the browser until that visitor has submitted. This is a spoiler gate only, since the sheet data is readable by anyone who calls the endpoint.
+A card where each guest answers two questions (favorite character, favorite scene). Answers go to a `Favorites` tab created automatically, one row per name: submitting again with the same name replaces the earlier answer. The results board is always visible to every visitor, so anyone with the link can read all answers (and the sheet data is readable by anyone who calls the endpoint).
 
 Guests can also upload a picture or GIF they love. The script saves it to a Drive folder called "LOTR Marathon uploads" (shared by link, viewable by anyone with the link) and stores the file id in an `Image ID` column. The page shrinks still pictures to at most 1000 px JPEG before sending; GIFs are sent as-is, capped at 4 MB. The script checks the file signature and a 6 MB cap. Resubmitting with the same name and a new picture replaces (and trashes) the old one.
 

@@ -240,7 +240,7 @@
     .favorites { margin-top: 3rem; }
     .fav-grid { display: grid; grid-template-columns: 22rem 1fr; gap: 2.5rem; align-items: start; }
     .fav-board { min-height: 8rem; }
-    .fav-locked {
+    .fav-note {
       margin: 0;
       padding: 2.5rem 1rem;
       text-align: center;
@@ -443,7 +443,7 @@
 
     <section class="card favorites">
       <h2>Fellowship Favorites</h2>
-      <p class="intro">Answer both questions to see what everyone else picked.</p>
+      <p class="intro">Tell us your favorites. Everyone's answers show up on the board.</p>
 
       <div class="fav-grid">
         <form id="fav-form">
@@ -474,12 +474,12 @@
 
           <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
 
-          <button type="submit" id="fav-submit">Show me everyone's picks</button>
+          <button type="submit" id="fav-submit">Submit answers</button>
           <p id="fav-status" role="status"></p>
         </form>
 
         <div class="fav-board">
-          <p id="fav-locked" class="fav-locked">The board unlocks once you've answered.</p>
+          <p id="fav-note" class="fav-note">Loading everyone's answers...</p>
           <div id="fav-results" hidden>
             <p id="fav-tally" class="fav-tally"></p>
             <div id="fav-list" class="fav-list"></div>
@@ -818,12 +818,12 @@
     });
 
     // ---- Fellowship Favorites ----
-    // The board stays hidden until this browser has submitted an answer. That is a friendly
-    // spoiler gate, not security: the sheet data is readable by anyone who calls the endpoint.
+    // The board is public: everyone's answers are always shown. The last list this browser saw is
+    // cached so it appears instantly, then refreshed from the sheet.
     const favForm = document.getElementById("fav-form");
     const favButton = document.getElementById("fav-submit");
     const favStatus = document.getElementById("fav-status");
-    const favLocked = document.getElementById("fav-locked");
+    const favNote = document.getElementById("fav-note");
     const favResults = document.getElementById("fav-results");
     const favList = document.getElementById("fav-list");
     const favTally = document.getElementById("fav-tally");
@@ -843,7 +843,13 @@
     }
 
     function showFavorites(favs) {
-      favLocked.hidden = true;
+      if (!favs.length) {
+        favResults.hidden = true;
+        favNote.hidden = false;
+        favNote.textContent = "No answers yet. Be the first!";
+        return;
+      }
+      favNote.hidden = true;
       favResults.hidden = false;
 
       // "gandalf" and "Gandalf " count as the same pick; show the first spelling seen.
@@ -920,16 +926,21 @@
     }
 
     function saveFavs(favs) {
-      try { localStorage.setItem("favs", JSON.stringify(favs)); localStorage.setItem("favAnswered", "1"); } catch (err) {}
+      try { localStorage.setItem("favs", JSON.stringify(favs)); } catch (err) {}
     }
 
-    // Returning visitors who already answered get the board straight away.
+    // Draw the cached board right away if there is one, then refresh it from the sheet.
     (async () => {
-      let answered = false;
-      try { answered = localStorage.getItem("favAnswered") === "1"; } catch (err) {}
-      if (!answered) return;
-      try { showFavorites(JSON.parse(localStorage.getItem("favs") || "[]")); } catch (err) {}
-      try { const favs = await fetchFavorites(); saveFavs(favs); showFavorites(favs); } catch (err) {}
+      let cached = null;
+      try { cached = JSON.parse(localStorage.getItem("favs") || "null"); } catch (err) {}
+      if (cached) showFavorites(cached);
+      try {
+        const favs = await fetchFavorites();
+        saveFavs(favs);
+        showFavorites(favs);
+      } catch (err) {
+        if (!cached) favNote.textContent = "Couldn't load everyone's answers. Try refreshing the page.";
+      }
     })();
 
     favForm.addEventListener("submit", async (e) => {
