@@ -753,15 +753,25 @@
     const quoteText = document.getElementById("quote-text");
     const quoteWho = document.getElementById("quote-who");
     let quotes = null;
-    let lastQuote = -1;
+    let deck = []; // quotes not yet shown in this round
+
+    // Shuffled deck instead of pure random picks: every quote appears once before any repeats.
+    function drawQuote() {
+      if (!deck.length) {
+        deck = quotes.map((_, i) => i);
+        for (let i = deck.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [deck[i], deck[j]] = [deck[j], deck[i]];
+        }
+      }
+      return quotes[deck.pop()];
+    }
 
     quoteButton.addEventListener("click", async () => {
       try {
-        if (!quotes) quotes = await (await fetch("assets/quotes.json")).json();
-        let i;
-        do { i = Math.floor(Math.random() * quotes.length); } while (quotes.length > 1 && i === lastQuote);
-        lastQuote = i;
-        const q = quotes[i];
+        // no-cache: always revalidate, so an edited quotes file shows up straight away.
+        if (!quotes) quotes = await (await fetch("assets/quotes.json", { cache: "no-cache" })).json();
+        const q = drawQuote();
         quoteText.textContent = q.text;
         quoteWho.textContent = [q.who, q.source].filter(Boolean).join(", ");
       } catch (err) {
@@ -769,7 +779,7 @@
         quoteWho.textContent = "";
       }
       quoteBox.hidden = false;
-      quoteButton.textContent = "Another one";
+      quoteButton.textContent = "Yes, we've had one quote, but what about second quote?";
     });
 
     // ---- Fellowship Favorites ----
@@ -964,6 +974,7 @@
     const TRACKS = [
       ["assets/intro.mp3", "Intro"],
       ["assets/Concerning%20Hobbits.mp3", "Concerning Hobbits"],
+      ["assets/ROHAN.mp3", "Rohan"],
     ];
     const trackSelect = document.getElementById("track");
     for (const [src, label] of TRACKS) trackSelect.append(new Option(label, src));
