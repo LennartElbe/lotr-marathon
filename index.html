@@ -239,12 +239,9 @@
     .fav-gallery figcaption { font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem; }
     input[type="file"] { width: 100%; font: inherit; color: inherit; }
 
-    /* ---- Easter egg video ---- */
-    .egg { width: min(92vw, 62rem); padding: 0.75rem; background: var(--ink); border: 1px solid var(--line); border-radius: 10px; color: var(--cream); }
-    .egg::backdrop { background: rgba(0, 0, 0, 0.8); }
-    .egg-frame { aspect-ratio: 16 / 9; }
-    .egg-frame iframe { width: 100%; height: 100%; border: 0; border-radius: 6px; }
-    .egg-close { display: block; margin: 0 0 0.6rem auto; padding: 0.4rem 1rem; font-size: 0.8rem; }
+    /* ---- Easter egg: the video takes the animation's place in the hero frame ---- */
+    .hero-art iframe { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 6px; }
+    .egg-back { display: block; margin: 0.5rem 0 0 auto; padding: 0.35rem 0.9rem; font-size: 0.75rem; }
 
     /* ---- Music button ---- */
     .music {
@@ -461,11 +458,6 @@
       </div>
     </section>
   </div>
-
-  <dialog id="egg" class="egg" aria-label="Secret video">
-    <button type="button" id="egg-close" class="egg-close" aria-label="Close video">Close</button>
-    <div id="egg-frame" class="egg-frame"></div>
-  </dialog>
 
   <audio id="music" loop preload="auto"></audio>
   <div class="music" id="music-controls" hidden>
@@ -1056,22 +1048,26 @@
     });
 
     // ---- Easter egg ----
-    // Clicking the One Ring opens an embedded video. (It used to take 20 clicks, one per Ring of
-    // Power forged: 3 Elves + 7 Dwarves + 9 Men + 1. Raise CLICKS_NEEDED to bring that back.)
-    // The iframe only exists while the dialog is open, so nothing loads from YouTube otherwise
-    // and closing it stops the video.
+    // Clicking the One Ring swaps the pixel animation in the hero frame for an embedded video;
+    // clicking it again (or the Back button) restores the animation. (It used to take 20 clicks,
+    // one per Ring of Power forged: 3 Elves + 7 Dwarves + 9 Men + 1. Raise CLICKS_NEEDED to bring
+    // that back.) The iframe only exists while the video is showing, so nothing loads from YouTube
+    // otherwise and swapping back stops the video.
     const CLICKS_NEEDED = 1;
     const EGG_VIDEO = "uE-1RPDqJAY";
-    const egg = document.getElementById("egg");
-    const eggFrame = document.getElementById("egg-frame");
+    const heroArt = document.querySelector(".hero-art");
+    const heroOriginal = [...heroArt.childNodes]; // the animation, put back when the video closes
     let ringClicks = 0;
+    let videoShowing = false;
     let musicWasPlaying = false;
 
-    document.querySelector(".ring").addEventListener("click", () => {
-      ringClicks += 1;
-      if (ringClicks < CLICKS_NEEDED) return;
-      ringClicks = 0;
+    function showAnimation() {
+      heroArt.replaceChildren(...heroOriginal);
+      videoShowing = false;
+      if (musicWasPlaying) startMusic();
+    }
 
+    function showVideo() {
       musicWasPlaying = !music.paused && !music.muted;
       music.pause(); // don't talk over the video
 
@@ -1081,16 +1077,24 @@
       frame.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
       frame.allowFullscreen = true;
       frame.referrerPolicy = "strict-origin-when-cross-origin";
-      eggFrame.replaceChildren(frame);
-      egg.showModal();
-    });
 
-    egg.addEventListener("close", () => {
-      eggFrame.replaceChildren(); // removing the iframe stops playback
-      if (musicWasPlaying) startMusic();
+      const back = document.createElement("button");
+      back.type = "button";
+      back.className = "egg-back";
+      back.textContent = "Back to the Fellowship";
+      back.addEventListener("click", showAnimation);
+
+      heroArt.replaceChildren(frame, back);
+      videoShowing = true;
+    }
+
+    document.querySelector(".ring").addEventListener("click", () => {
+      if (videoShowing) { showAnimation(); return; }
+      ringClicks += 1;
+      if (ringClicks < CLICKS_NEEDED) return;
+      ringClicks = 0;
+      showVideo();
     });
-    document.getElementById("egg-close").addEventListener("click", () => egg.close());
-    egg.addEventListener("click", (e) => { if (e.target === egg) egg.close(); }); // click the backdrop
   </script>
 </body>
 </html>
