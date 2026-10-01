@@ -1,8 +1,10 @@
 // Google Apps Script backend for the RSVP and snack signup forms.
-// Bound to a Google Sheet. RSVPs go to the first tab; snack claims go to a "Snacks" tab.
+// Bound to a Google Sheet. RSVPs go to the first tab; snack claims go to a "Snacks" tab;
+// favorite character/scene answers go to a "Favorites" tab.
 
 const RSVP_HEADERS = ["Timestamp", "Name", "Attending", "Dietary needs"];
 const SNACK_HEADERS = ["Timestamp", "Name", "Item", "Ref", "Meal", "Custom"];
+const FAV_HEADERS = ["Timestamp", "Name", "Favorite character", "Favorite scene", "Ref"];
 // Keep in sync with MEALS in index.html.
 const MEALS = ["Breakfast", "Second Breakfast", "Elevenses", "Luncheon", "Afternoon Tea", "Dinner", "Supper"];
 
@@ -13,6 +15,7 @@ function doPost(e) {
   if (p.website) return text("ok");
 
   if (p.type === "snack") return claimSnack(p);
+  if (p.type === "fav") return saveFavorite(p);
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
   if (sheet.getLastRow() === 0) sheet.appendRow(RSVP_HEADERS);
@@ -35,7 +38,35 @@ function doGet(e) {
     return ContentService.createTextOutput(JSON.stringify({ claims }))
       .setMimeType(ContentService.MimeType.JSON);
   }
+  if (e.parameter.action === "favorites") {
+    const rows = favSheet().getDataRange().getValues().slice(1);
+    const favorites = rows.map((r) => ({ name: r[1], character: r[2], scene: r[3], ref: r[4] }));
+    return ContentService.createTextOutput(JSON.stringify({ favorites }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
   return text("ok");
+}
+
+// One answer per name (case-insensitive): resubmitting with the same name replaces the old answer.
+function saveFavorite(p) {
+  const name = clean(p.name, 100);
+  const character = clean(p.character, 60);
+  const scene = clean(p.scene, 150);
+  if (!name || !character || !scene) return text("invalid");
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = favSheet();
+    const row = [new Date(), name, character, scene, clean(p.ref, 40)];
+    const names = sheet.getDataRange().getValues().map((r) => String(r[1]).toLowerCase());
+    const existing = names.indexOf(name.toLowerCase(), 1); // index 0 is the header row
+    if (existing > 0) sheet.getRange(existing + 1, 1, 1, row.length).setValues([row]);
+    else sheet.appendRow(row);
+    return text("ok");
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // First claim for an item wins. The lock stops two simultaneous submissions
@@ -75,6 +106,16 @@ function snackSheet() {
     // Tabs created before these columns existed get their headers filled in.
     if (sheet.getRange(1, 5).getValue() === "") sheet.getRange(1, 5).setValue("Meal");
     if (sheet.getRange(1, 6).getValue() === "") sheet.getRange(1, 6).setValue("Custom");
+  }
+  return sheet;
+}
+
+function favSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName("Favorites");
+  if (!sheet) {
+    sheet = ss.insertSheet("Favorites");
+    sheet.appendRow(FAV_HEADERS);
   }
   return sheet;
 }

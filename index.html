@@ -176,8 +176,8 @@
     button:hover:not(:disabled) { background: var(--gold-soft); }
     button:disabled { opacity: 0.5; cursor: default; }
     .hp { position: absolute; left: -9999px; }
-    #status, #snack-status { min-height: 1.5em; text-align: center; margin: 0; }
-    #status.error, #snack-status.error { color: #e07a5f; }
+    #status, #snack-status, #fav-status { min-height: 1.5em; text-align: center; margin: 0; }
+    #status.error, #snack-status.error, #fav-status.error { color: #e07a5f; }
 
     /* ---- Meals ---- */
     .meals h3 { font-size: 1rem; margin: 0 0 0.75rem; color: var(--gold-soft); }
@@ -210,6 +210,24 @@
     #others ul { margin: 0.4rem 0 0; padding-left: 1.2rem; }
     #snack-submit { justify-self: end; min-width: 14rem; }
 
+    /* ---- Fellowship Favorites ---- */
+    .favorites { margin-top: 3rem; }
+    .fav-grid { display: grid; grid-template-columns: 22rem 1fr; gap: 2.5rem; align-items: start; }
+    .fav-board { min-height: 8rem; }
+    .fav-locked {
+      margin: 0;
+      padding: 2.5rem 1rem;
+      text-align: center;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      opacity: 0.75;
+    }
+    .fav-tally { margin: 0 0 1rem; color: var(--gold-soft); }
+    .fav-list { display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 0; border: 1px solid rgba(217, 164, 65, 0.2); border-radius: 8px; overflow: hidden; }
+    .fav-list > * { padding: 0.5rem 0.8rem; border-bottom: 1px solid rgba(217, 164, 65, 0.12); }
+    .fav-list .head { font-family: var(--display); font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); background: rgba(0, 0, 0, 0.25); }
+    .fav-list .char { color: var(--gold-soft); }
+
     /* ---- Music button ---- */
     .mute {
       position: fixed;
@@ -238,6 +256,10 @@
       .layout { grid-template-columns: 1fr; margin-top: 6rem; gap: 7rem; }
       .col { gap: 7rem; }
       .snack-row { grid-template-columns: 1fr; }
+      .fav-grid { grid-template-columns: 1fr; }
+      .fav-list { grid-template-columns: 1fr 1fr; }
+      .fav-list .scene { grid-column: 1 / -1; }
+      .fav-list .head.scene { display: none; }
       #snack-submit { justify-self: stretch; }
     }
   </style>
@@ -348,6 +370,48 @@
         </form>
       </section>
     </div>
+
+    <section class="card favorites">
+      <h2>Fellowship Favorites</h2>
+      <p class="intro">Answer both questions to see what everyone else picked.</p>
+
+      <div class="fav-grid">
+        <form id="fav-form">
+          <div>
+            <label for="fav-name">Your name</label>
+            <input type="text" id="fav-name" name="name" required maxlength="100" autocomplete="name">
+          </div>
+          <div>
+            <label for="fav-character">Favorite character</label>
+            <input type="text" id="fav-character" name="character" required maxlength="60" list="fav-characters" placeholder="Pick one or type your own">
+            <datalist id="fav-characters">
+              <option value="Frodo"><option value="Sam"><option value="Merry"><option value="Pippin">
+              <option value="Gandalf"><option value="Aragorn"><option value="Legolas"><option value="Gimli">
+              <option value="Boromir"><option value="Gollum"><option value="Galadriel"><option value="Elrond">
+              <option value="Arwen"><option value="Eowyn"><option value="Faramir"><option value="Theoden">
+              <option value="Eomer"><option value="Bilbo"><option value="Treebeard"><option value="Saruman">
+            </datalist>
+          </div>
+          <div>
+            <label for="fav-scene">Favorite scene</label>
+            <input type="text" id="fav-scene" name="scene" required maxlength="150" placeholder="e.g. The Council of Elrond">
+          </div>
+
+          <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+
+          <button type="submit" id="fav-submit">Show me everyone's picks</button>
+          <p id="fav-status" role="status"></p>
+        </form>
+
+        <div class="fav-board">
+          <p id="fav-locked" class="fav-locked">The board unlocks once you've answered.</p>
+          <div id="fav-results" hidden>
+            <p id="fav-tally" class="fav-tally"></p>
+            <div id="fav-list" class="fav-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 
   <audio id="music" src="assets/Concerning%20Hobbits.mp3" loop preload="auto"></audio>
@@ -637,6 +701,89 @@
     });
 
     loadCatalog();
+
+    // ---- Fellowship Favorites ----
+    // The board stays hidden until this browser has submitted an answer. That is a friendly
+    // spoiler gate, not security: the sheet data is readable by anyone who calls the endpoint.
+    const favForm = document.getElementById("fav-form");
+    const favButton = document.getElementById("fav-submit");
+    const favStatus = document.getElementById("fav-status");
+    const favLocked = document.getElementById("fav-locked");
+    const favResults = document.getElementById("fav-results");
+    const favList = document.getElementById("fav-list");
+    const favTally = document.getElementById("fav-tally");
+
+    async function fetchFavorites() {
+      const res = await fetch(`${ENDPOINT}?action=favorites&t=${Date.now()}`);
+      return (await res.json()).favorites;
+    }
+
+    function cell(cls, text) {
+      const el = document.createElement("div");
+      el.className = cls;
+      el.textContent = text;
+      return el;
+    }
+
+    function showFavorites(favs) {
+      favLocked.hidden = true;
+      favResults.hidden = false;
+
+      // "gandalf" and "Gandalf " count as the same pick; show the first spelling seen.
+      const counts = new Map();
+      for (const f of favs) {
+        const key = String(f.character).trim().toLowerCase();
+        const entry = counts.get(key) || { label: String(f.character).trim(), n: 0 };
+        entry.n += 1;
+        counts.set(key, entry);
+      }
+      const top = [...counts.values()].sort((a, b) => b.n - a.n).slice(0, 5);
+      favTally.textContent = top.length
+        ? "Most loved: " + top.map((t) => `${t.label} (${t.n})`).join(", ")
+        : "";
+
+      favList.replaceChildren(
+        cell("head", "Name"), cell("head", "Character"), cell("head scene", "Scene"),
+        ...favs.flatMap((f) => [cell("", f.name), cell("char", f.character), cell("scene", f.scene)]),
+      );
+    }
+
+    function saveFavs(favs) {
+      try { localStorage.setItem("favs", JSON.stringify(favs)); localStorage.setItem("favAnswered", "1"); } catch (err) {}
+    }
+
+    // Returning visitors who already answered get the board straight away.
+    (async () => {
+      let answered = false;
+      try { answered = localStorage.getItem("favAnswered") === "1"; } catch (err) {}
+      if (!answered) return;
+      try { showFavorites(JSON.parse(localStorage.getItem("favs") || "[]")); } catch (err) {}
+      try { const favs = await fetchFavorites(); saveFavs(favs); showFavorites(favs); } catch (err) {}
+    })();
+
+    favForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      favStatus.className = "";
+      const data = new FormData(favForm);
+      const ref = Math.random().toString(36).slice(2, 12);
+      data.append("type", "fav");
+      data.append("ref", ref);
+
+      favButton.disabled = true;
+      favStatus.textContent = "Saving...";
+      try {
+        await fetch(ENDPOINT, { method: "POST", mode: "no-cors", body: new URLSearchParams(data) });
+        const favs = await fetchFavorites();
+        if (!favs.some((f) => f.ref === ref)) throw new Error("not saved");
+        saveFavs(favs);
+        showFavorites(favs);
+        favStatus.textContent = "Saved! Submit again with the same name to change your answer.";
+      } catch (err) {
+        favStatus.className = "error";
+        favStatus.textContent = "Something went wrong. Please try again.";
+      }
+      favButton.disabled = false;
+    });
 
     // ---- Parallax background ----
     // Each layer travels this many viewport heights over the full length of the page; the

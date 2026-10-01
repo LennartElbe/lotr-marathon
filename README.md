@@ -20,6 +20,10 @@ The snack catalog (`CATALOG` in `index.html`) is grouped into savory snacks, swe
 
 Guests also pick which hobbit meal their item is for (`MEALS` in `index.html`, mirrored in `Code.gs`), saved in a `Meal` column. Breakfast is 8:30 AM and Second Breakfast 9:30 AM; the rest follow the traditional schedule.
 
+## Fellowship Favorites
+
+A card where each guest answers two questions (favorite character, favorite scene). Answers go to a `Favorites` tab created automatically, one row per name: submitting again with the same name replaces the earlier answer. The results board stays hidden in the browser until that visitor has submitted. This is a spoiler gate only, since the sheet data is readable by anyone who calls the endpoint.
+
 After changing `apps-script/Code.gs`, paste it into the Apps Script editor and use **Deploy → Manage deployments → Edit → New version**. The web app URL stays the same.
 
 Keep item ids in `CATALOG` stable once guests have claimed things, since the sheet stores the id.
