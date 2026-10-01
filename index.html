@@ -22,17 +22,25 @@
       margin: 0;
       min-height: 100vh;
       background-color: var(--ink);
-      background-image:
-        linear-gradient(rgba(14, 10, 6, 0.55), rgba(14, 10, 6, 0.15) 35%, rgba(14, 10, 6, 0.6)),
-        url("assets/rivendell.jpg");
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      background-attachment: fixed;
       color: var(--cream);
       font-family: Georgia, serif;
       line-height: 1.5;
     }
+    /* ---- Parallax background: three fixed layers shifted by scroll position (see script) ---- */
+    .bg-back, .bg-front { position: fixed; top: 0; left: 0; width: 100%; pointer-events: none; will-change: transform; }
+    .bg-back {
+      height: 110vh;
+      z-index: -3;
+      background: url("assets/rivendell.jpg") center / cover no-repeat;
+    }
+    .bg-shade {
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      pointer-events: none;
+      background: linear-gradient(rgba(14, 10, 6, 0.55), rgba(14, 10, 6, 0.15) 35%, rgba(14, 10, 6, 0.6));
+    }
+    .bg-front { height: 130vh; z-index: -1; object-fit: cover; object-position: center bottom; }
     .page { max-width: 92rem; margin: 0 auto; padding: 0 2.5rem 4rem; }
 
     /* ---- Hero ---- */
@@ -223,6 +231,11 @@
   </style>
 </head>
 <body>
+  <div class="bg-back" id="bg-back"></div>
+  <div class="bg-shade"></div>
+  <!-- Front layer: transparent PNG of foreground foliage. Removed automatically if the file is missing. -->
+  <img class="bg-front" id="bg-front" src="assets/rivendell_front.png" alt="" onerror="this.remove()">
+
   <div class="page">
     <section class="hero">
       <div class="hero-text">
@@ -568,6 +581,32 @@
     });
 
     loadCatalog();
+
+    // ---- Parallax background ----
+    // Each layer travels this many viewport heights over the full length of the page; the
+    // front layer moves further than the back one, which reads as depth. The layers are
+    // taller than the viewport by the same amount so no gap shows at the bottom.
+    const LAYERS = [
+      [document.getElementById("bg-back"), 10],
+      [document.getElementById("bg-front"), 30],
+    ];
+
+    if (!matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      let queued = false;
+      const update = () => {
+        queued = false;
+        const max = document.documentElement.scrollHeight - innerHeight;
+        const progress = max > 0 ? Math.min(scrollY / max, 1) : 0;
+        for (const [el, vh] of LAYERS) {
+          if (el?.isConnected) el.style.transform = `translate3d(0, ${-progress * vh}vh, 0)`;
+        }
+      };
+      addEventListener("scroll", () => {
+        if (!queued) { queued = true; requestAnimationFrame(update); }
+      }, { passive: true });
+      addEventListener("resize", update);
+      update();
+    }
 
     // ---- Background music ----
     const music = document.getElementById("music");
