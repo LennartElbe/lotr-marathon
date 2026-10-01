@@ -4,12 +4,16 @@
 
 const RSVP_HEADERS = ["Timestamp", "Name", "Attending", "Dietary needs"];
 const SNACK_HEADERS = ["Timestamp", "Name", "Item", "Ref", "Meal", "Custom"];
-const FAV_HEADERS = ["Timestamp", "Name", "Favorite character", "Favorite scene", "Ref"];
+const FAV_HEADERS = ["Timestamp", "Name", "Favorite character", "Favorite scene", "Ref", "Image ID"];
+const UPLOAD_FOLDER = "LOTR Marathon uploads";
+const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
 // Keep in sync with MEALS in index.html.
 const MEALS = ["Breakfast", "Second Breakfast", "Elevenses", "Luncheon", "Afternoon Tea", "Dinner", "Supper"];
 
 function doPost(e) {
-  const p = e.parameter;
+  // The favorites form sends JSON as text/plain (so it can carry an image); everything else is form-encoded.
+  const isJson = e.postData && String(e.postData.type).indexOf("text/plain") === 0;
+  const p = isJson ? JSON.parse(e.postData.contents) : e.parameter;
 
   // Honeypot: bots fill the hidden field, humans don't.
   if (p.website) return text("ok");
@@ -40,7 +44,7 @@ function doGet(e) {
   }
   if (e.parameter.action === "favorites") {
     const rows = favSheet().getDataRange().getValues().slice(1);
-    const favorites = rows.map((r) => ({ name: r[1], character: r[2], scene: r[3], ref: r[4] }));
+    const favorites = rows.map((r) => ({ name: r[1], character: r[2], scene: r[3], ref: r[4], image: r[5] }));
     return ContentService.createTextOutput(JSON.stringify({ favorites }))
       .setMimeType(ContentService.MimeType.JSON);
   }
@@ -48,6 +52,7 @@ function doGet(e) {
 }
 
 // One answer per name (case-insensitive): resubmitting with the same name replaces the old answer.
+// An optional image is stored in Drive; resubmitting without one keeps the earlier picture.
 function saveFavorite(p) {
   const name = clean(p.name, 100);
   const character = clean(p.character, 60);
@@ -55,18 +60,62 @@ function saveFavorite(p) {
   if (!name || !character || !scene) return text("invalid");
 
   const lock = LockService.getScriptLock();
-  lock.waitLock(10000);
+  lock.waitLock(30000);
   try {
     const sheet = favSheet();
-    const row = [new Date(), name, character, scene, clean(p.ref, 40)];
-    const names = sheet.getDataRange().getValues().map((r) => String(r[1]).toLowerCase());
+    const values = sheet.getDataRange().getValues();
+    const names = values.map((r) => String(r[1]).toLowerCase());
     const existing = names.indexOf(name.toLowerCase(), 1); // index 0 is the header row
+    const oldImage = existing > 0 ? String(values[existing][5] || "") : "";
+
+    let imageId = oldImage;
+    if (p.image) {
+      const saved = saveImage(String(p.image));
+      if (!saved) return text("badimage");
+      imageId = saved;
+      if (oldImage) {
+        try { DriveApp.getFileById(oldImage).setTrashed(true); } catch (err) {}
+      }
+    }
+
+    const row = [new Date(), name, character, scene, clean(p.ref, 40), imageId];
     if (existing > 0) sheet.getRange(existing + 1, 1, 1, row.length).setValues([row]);
     else sheet.appendRow(row);
     return text("ok");
   } finally {
     lock.releaseLock();
   }
+}
+
+// Validates by file signature (not the client's claimed type), stores in a Drive folder, returns the file id.
+function saveImage(base64) {
+  let bytes;
+  try { bytes = Utilities.base64Decode(base64); } catch (err) { return null; }
+  if (!bytes.length || bytes.length > MAX_IMAGE_BYTES) return null;
+
+  const type = sniffImage(bytes);
+  if (!type) return null;
+
+  const ext = { "image/jpeg": "jpg", "image/png": "png", "image/gif": "gif", "image/webp": "webp" }[type];
+  const blob = Utilities.newBlob(bytes, type, "favorite-" + Date.now() + "." + ext);
+  const file = uploadFolder().createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return file.getId();
+}
+
+function sniffImage(b) {
+  const x = (i) => b[i] & 255; // Apps Script bytes are signed
+  if (x(0) === 0xff && x(1) === 0xd8 && x(2) === 0xff) return "image/jpeg";
+  if (x(0) === 0x89 && x(1) === 0x50 && x(2) === 0x4e && x(3) === 0x47) return "image/png";
+  if (x(0) === 0x47 && x(1) === 0x49 && x(2) === 0x46 && x(3) === 0x38) return "image/gif";
+  if (x(0) === 0x52 && x(1) === 0x49 && x(2) === 0x46 && x(3) === 0x46 &&
+      x(8) === 0x57 && x(9) === 0x45 && x(10) === 0x42 && x(11) === 0x50) return "image/webp";
+  return null;
+}
+
+function uploadFolder() {
+  const found = DriveApp.getFoldersByName(UPLOAD_FOLDER);
+  return found.hasNext() ? found.next() : DriveApp.createFolder(UPLOAD_FOLDER);
 }
 
 // First claim for an item wins. The lock stops two simultaneous submissions
@@ -116,6 +165,8 @@ function favSheet() {
   if (!sheet) {
     sheet = ss.insertSheet("Favorites");
     sheet.appendRow(FAV_HEADERS);
+  } else if (sheet.getRange(1, 6).getValue() === "") {
+    sheet.getRange(1, 6).setValue("Image ID"); // tab created before images existed
   }
   return sheet;
 }

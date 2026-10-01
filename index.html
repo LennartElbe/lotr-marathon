@@ -227,6 +227,12 @@
     .fav-list > * { padding: 0.5rem 0.8rem; border-bottom: 1px solid rgba(217, 164, 65, 0.12); }
     .fav-list .head { font-family: var(--display); font-size: 0.75rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold); background: rgba(0, 0, 0, 0.25); }
     .fav-list .char { color: var(--gold-soft); }
+    .fav-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: 0.75rem; margin-top: 1.25rem; }
+    .fav-gallery:empty { display: none; }
+    .fav-gallery figure { margin: 0; }
+    .fav-gallery img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; background: rgba(0, 0, 0, 0.4); }
+    .fav-gallery figcaption { font-size: 0.85rem; opacity: 0.8; margin-top: 0.25rem; }
+    input[type="file"] { width: 100%; font: inherit; color: inherit; }
 
     /* ---- Music button ---- */
     .mute {
@@ -397,6 +403,11 @@
             <input type="text" id="fav-scene" name="scene" required maxlength="150" placeholder="e.g. The Council of Elrond">
           </div>
 
+          <div>
+            <label for="fav-image">Please upload a pic or gif you love of the movies (optional)</label>
+            <input type="file" id="fav-image" accept="image/png,image/jpeg,image/gif,image/webp">
+          </div>
+
           <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
 
           <button type="submit" id="fav-submit">Show me everyone's picks</button>
@@ -408,6 +419,7 @@
           <div id="fav-results" hidden>
             <p id="fav-tally" class="fav-tally"></p>
             <div id="fav-list" class="fav-list"></div>
+            <div id="fav-gallery" class="fav-gallery"></div>
           </div>
         </div>
       </div>
@@ -712,6 +724,8 @@
     const favResults = document.getElementById("fav-results");
     const favList = document.getElementById("fav-list");
     const favTally = document.getElementById("fav-tally");
+    const favGallery = document.getElementById("fav-gallery");
+    const favImage = document.getElementById("fav-image");
 
     async function fetchFavorites() {
       const res = await fetch(`${ENDPOINT}?action=favorites&t=${Date.now()}`);
@@ -746,6 +760,60 @@
         cell("head", "Name"), cell("head", "Character"), cell("head scene", "Scene"),
         ...favs.flatMap((f) => [cell("", f.name), cell("char", f.character), cell("scene", f.scene)]),
       );
+      renderGallery(favs);
+    }
+
+    // Uploads live in a Drive folder shared by link; lh3 serves the file itself (GIFs stay animated).
+    const imageUrl = (id) => `https://lh3.googleusercontent.com/d/${encodeURIComponent(id)}`;
+
+    function renderGallery(favs) {
+      favGallery.replaceChildren(...favs.filter((f) => f.image).map((f) => {
+        const figure = document.createElement("figure");
+        const link = document.createElement("a");
+        link.href = imageUrl(f.image);
+        link.target = "_blank";
+        link.rel = "noopener";
+        const img = document.createElement("img");
+        img.src = imageUrl(f.image);
+        img.loading = "lazy";
+        img.alt = `A favorite picture from ${f.name}`;
+        link.append(img);
+        const caption = document.createElement("figcaption");
+        caption.textContent = f.name;
+        figure.append(link, caption);
+        return figure;
+      }));
+    }
+
+    // Static pictures are shrunk and re-encoded as JPEG before upload; GIFs are sent as-is to stay animated.
+    const MAX_GIF_BYTES = 4 * 1024 * 1024;
+    const MAX_SIDE = 1000;
+
+    const readBase64 = (blob) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+
+    async function prepareImage(file) {
+      if (!["image/png", "image/jpeg", "image/gif", "image/webp"].includes(file.type)) {
+        throw new Error("Please choose a JPG, PNG, GIF or WebP picture.");
+      }
+      if (file.type === "image/gif") {
+        if (file.size > MAX_GIF_BYTES) throw new Error("That GIF is over 4 MB. Please pick a smaller one.");
+        return readBase64(file);
+      }
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#fff"; // JPEG has no transparency
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", 0.82).split(",")[1];
     }
 
     function saveFavs(favs) {
@@ -764,23 +832,38 @@
     favForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       favStatus.className = "";
-      const data = new FormData(favForm);
       const ref = Math.random().toString(36).slice(2, 12);
-      data.append("type", "fav");
-      data.append("ref", ref);
 
       favButton.disabled = true;
-      favStatus.textContent = "Saving...";
+      favStatus.textContent = favImage.files[0] ? "Preparing your picture..." : "Saving...";
       try {
-        await fetch(ENDPOINT, { method: "POST", mode: "no-cors", body: new URLSearchParams(data) });
+        // JSON as text/plain: a "simple" request, so no-cors still works, and it can carry the image.
+        const payload = {
+          type: "fav",
+          ref,
+          name: document.getElementById("fav-name").value,
+          character: document.getElementById("fav-character").value,
+          scene: document.getElementById("fav-scene").value,
+          website: favForm.elements.website.value,
+        };
+        const file = favImage.files[0];
+        if (file) payload.image = await prepareImage(file);
+
+        favStatus.textContent = "Saving...";
+        await fetch(ENDPOINT, { method: "POST", mode: "no-cors", body: JSON.stringify(payload) });
         const favs = await fetchFavorites();
-        if (!favs.some((f) => f.ref === ref)) throw new Error("not saved");
+        if (!favs.some((f) => f.ref === ref)) {
+          throw new Error(file ? "That didn't save. Check the picture is a JPG, PNG, GIF or WebP and try again." : "not saved");
+        }
         saveFavs(favs);
         showFavorites(favs);
+        favImage.value = "";
         favStatus.textContent = "Saved! Submit again with the same name to change your answer.";
       } catch (err) {
         favStatus.className = "error";
-        favStatus.textContent = "Something went wrong. Please try again.";
+        favStatus.textContent = err.message && err.message !== "not saved"
+          ? err.message
+          : "Something went wrong. Please try again.";
       }
       favButton.disabled = false;
     });

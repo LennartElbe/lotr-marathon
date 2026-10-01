@@ -24,6 +24,10 @@ Guests also pick which hobbit meal their item is for (`MEALS` in `index.html`, m
 
 A card where each guest answers two questions (favorite character, favorite scene). Answers go to a `Favorites` tab created automatically, one row per name: submitting again with the same name replaces the earlier answer. The results board stays hidden in the browser until that visitor has submitted. This is a spoiler gate only, since the sheet data is readable by anyone who calls the endpoint.
 
+Guests can also upload a picture or GIF they love. The script saves it to a Drive folder called "LOTR Marathon uploads" (shared by link, viewable by anyone with the link) and stores the file id in an `Image ID` column. The page shrinks still pictures to at most 1000 px JPEG before sending; GIFs are sent as-is, capped at 4 MB. The script checks the file signature and a 6 MB cap. Resubmitting with the same name and a new picture replaces (and trashes) the old one.
+
+**The first deploy with image support needs Drive permission.** In the Apps Script editor, pick any function (e.g. `uploadFolder`) and click Run once to grant access, then deploy a new version.
+
 After changing `apps-script/Code.gs`, paste it into the Apps Script editor and use **Deploy → Manage deployments → Edit → New version**. The web app URL stays the same.
 
 Keep item ids in `CATALOG` stable once guests have claimed things, since the sheet stores the id.
