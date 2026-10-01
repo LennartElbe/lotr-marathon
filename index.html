@@ -132,7 +132,7 @@
 
     <dl class="details">
       <dt>Date</dt><dd>Saturday, October 10</dd>
-      <dt>Start time</dt><dd>9:00 AM</dd>
+      <dt>Start time</dt><dd>8:30 AM</dd>
       <dt>Where</dt><dd class="todo">[ADDRESS TBD]</dd>
     </dl>
 
@@ -194,9 +194,9 @@
     </section>
   </main>
 
-  <audio id="music" src="assets/music.mp3" loop preload="auto"></audio>
+  <audio id="music" src="assets/Concerning%20Hobbits.mp3" loop preload="auto"></audio>
   <button type="button" id="mute" class="mute" hidden>
-    <img id="mute-icon" src="assets/sound-on.png" alt="Mute music">
+    <img id="mute-icon" src="assets/sound_on.ico" alt="Mute music">
   </button>
 
   <script>
@@ -445,7 +445,7 @@
 
     function syncMute() {
       music.muted = muted;
-      muteIcon.src = muted ? "assets/sound-off.png" : "assets/sound-on.png";
+      muteIcon.src = muted ? "assets/sound_off.png" : "assets/sound_on.ico";
       muteIcon.alt = muted ? "Unmute music" : "Mute music";
       muteButton.setAttribute("aria-label", muteIcon.alt);
     }
