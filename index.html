@@ -55,12 +55,59 @@
     /* ---- Hero ---- */
     .hero {
       min-height: 26rem;
-      padding-top: 4.5rem;
+      padding-top: 2.5rem;
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: auto 1fr;
       align-items: center;
-      gap: 3rem;
+      gap: 4rem;
     }
+    .hero-side { display: grid; gap: 3.5rem; justify-items: start; }
+
+    /* ---- Collage: the invitation, framed like a gilded Rivendell panel ---- */
+    .collage {
+      position: relative;
+      margin: 0;
+      width: min(40rem, calc((100vh - 3rem) * 0.565));
+      min-width: 26rem;
+      padding: 1.1rem;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #f6dd8f 0%, #b9822a 22%, #6d4a14 45%, #e3b755 68%, #8a5c19 100%);
+      box-shadow:
+        0 0 0 2px #2a1d09,
+        0 22px 70px rgba(0, 0, 0, 0.75),
+        0 0 90px rgba(217, 164, 65, 0.28);
+    }
+    /* Inner bevel: a dark groove, a thin gold line, then the mat around the picture. */
+    .collage::before {
+      content: "";
+      position: absolute;
+      inset: 0.45rem;
+      border: 2px solid rgba(30, 20, 6, 0.85);
+      border-radius: 3px;
+      box-shadow: inset 0 0 0 2px rgba(246, 221, 143, 0.55);
+      pointer-events: none;
+    }
+    .collage-img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 3px solid #1b1206;
+      box-shadow: 0 0 0 3px rgba(246, 221, 143, 0.7), inset 0 0 30px rgba(0, 0, 0, 0.6);
+    }
+    /* Corner studs: rotated gold diamonds with a dark core. */
+    .collage i {
+      position: absolute;
+      width: 2.1rem;
+      height: 2.1rem;
+      transform: rotate(45deg);
+      background: radial-gradient(circle at 50% 50%, #1b1206 0 22%, #f6dd8f 24% 48%, #8a5c19 52%);
+      border: 2px solid #2a1d09;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6);
+    }
+    .collage i:nth-of-type(1) { top: -0.9rem; left: -0.9rem; }
+    .collage i:nth-of-type(2) { top: -0.9rem; right: -0.9rem; }
+    .collage i:nth-of-type(3) { bottom: -0.9rem; left: -0.9rem; }
+    .collage i:nth-of-type(4) { bottom: -0.9rem; right: -0.9rem; }
     .eyebrow {
       margin: 0 0 0.75rem;
       font-family: var(--display);
@@ -305,6 +352,7 @@
       .page { padding: 0 1rem 3rem; }
       .hero { grid-template-columns: 1fr; padding-top: 4rem; min-height: 0; gap: 2rem; }
       .hero-art { width: 100%; max-width: 32rem; }
+      .collage { width: 100%; min-width: 0; max-width: 34rem; margin: 0 auto; }
       .layout { grid-template-columns: 1fr; margin-top: 6rem; gap: 7rem; }
       .col { gap: 7rem; }
       .snack-row { grid-template-columns: 1fr; }
@@ -325,6 +373,11 @@
 
   <div class="page">
     <section class="hero">
+      <figure class="collage">
+        <i></i><i></i><i></i><i></i>
+        <img class="collage-img" src="assets/collage.JPG" alt="Invitation collage: Come to Lord of the Rings Day or the Nazgul will get you! Saturday, October 10th, 8:30 AM until after dark, Møllendalsbakken 1">
+      </figure>
+      <div class="hero-side">
       <div class="hero-text">
         <p class="eyebrow">Three films. Twelve hours. One ring.</p>
         <h1>The Lord of the Rings</h1>
@@ -356,6 +409,7 @@
           <img src="assets/fellowship_walking.gif" alt="Pixel art of the Fellowship walking across a bridge in Rivendell">
         </div>
       </figure>
+      </div>
     </section>
 
     <div class="layout">
