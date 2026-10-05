@@ -64,11 +64,24 @@
     .hero-side { display: grid; gap: 3.5rem; justify-items: start; }
 
     /* ---- Collage: the invitation, framed like a gilded Rivendell panel ---- */
+    .collage-wrap {
+      margin: 0;
+      width: min(40rem, calc((100vh - 5rem) * 0.565));
+      min-width: 26rem;
+    }
+    .collage-credit {
+      margin: 1.4rem 0 0;
+      text-align: center;
+      font-family: var(--display);
+      font-size: 0.85rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gold);
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
+    }
     .collage {
       position: relative;
       margin: 0;
-      width: min(40rem, calc((100vh - 3rem) * 0.565));
-      min-width: 26rem;
       padding: 1.1rem;
       border-radius: 6px;
       background: linear-gradient(135deg, #f6dd8f 0%, #b9822a 22%, #6d4a14 45%, #e3b755 68%, #8a5c19 100%);
@@ -352,7 +365,7 @@
       .page { padding: 0 1rem 3rem; }
       .hero { grid-template-columns: 1fr; padding-top: 4rem; min-height: 0; gap: 2rem; }
       .hero-art { width: 100%; max-width: 32rem; }
-      .collage { width: 100%; min-width: 0; max-width: 34rem; margin: 0 auto; }
+      .collage-wrap { width: 100%; min-width: 0; max-width: 34rem; margin: 0 auto; }
       .layout { grid-template-columns: 1fr; margin-top: 6rem; gap: 7rem; }
       .col { gap: 7rem; }
       .snack-row { grid-template-columns: 1fr; }
@@ -373,10 +386,13 @@
 
   <div class="page">
     <section class="hero">
+      <div class="collage-wrap">
       <figure class="collage">
         <i></i><i></i><i></i><i></i>
         <img class="collage-img" src="assets/collage.JPG" alt="Invitation collage: Come to Lord of the Rings Day or the Nazgul will get you! Saturday, October 10th, 8:30 AM until after dark, Møllendalsbakken 1">
       </figure>
+      <p class="collage-credit">Collage Artwork by Stephanie</p>
+      </div>
       <div class="hero-side">
       <div class="hero-text">
         <p class="eyebrow">Three films. Twelve hours. One ring.</p>
