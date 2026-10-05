@@ -3,7 +3,8 @@
 // favorite character/scene answers go to a "Favorites" tab.
 
 const RSVP_HEADERS = ["Timestamp", "Name", "Attending", "Dietary needs"];
-const SNACK_HEADERS = ["Timestamp", "Name", "Item", "Ref", "Meal", "Custom"];
+const SNACK_HEADERS = ["Timestamp", "Name", "Item", "Ref", "Meal", "Custom", "Token"];
+const MAX_CLAIMS = 3; // per guest name
 const FAV_HEADERS = ["Timestamp", "Name", "Favorite character", "Favorite scene", "Ref", "Image ID"];
 const UPLOAD_FOLDER = "LOTR Marathon uploads";
 const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
@@ -19,6 +20,7 @@ function doPost(e) {
   if (p.website) return text("ok");
 
   if (p.type === "snack") return claimSnack(p);
+  if (p.type === "release") return releaseSnack(p);
   if (p.type === "fav") return saveFavorite(p);
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
@@ -35,6 +37,7 @@ function doPost(e) {
 }
 
 // GET ?action=claims returns every snack claim as JSON so the page can gray out taken items.
+// The Token column is the claimer's secret for releasing a claim and is never sent out.
 function doGet(e) {
   if (e.parameter.action === "claims") {
     const rows = snackSheet().getDataRange().getValues().slice(1);
@@ -118,18 +121,34 @@ function uploadFolder() {
   return found.hasNext() ? found.next() : DriveApp.createFolder(UPLOAD_FOLDER);
 }
 
+// True if the most recent RSVP row for this name says Yes.
+function rsvpedYes(name) {
+  const rows = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0].getDataRange().getValues();
+  const want = name.toLowerCase();
+  for (let i = rows.length - 1; i >= 1; i--) {
+    if (String(rows[i][1]).trim().toLowerCase() === want) return rows[i][2] === "Yes";
+  }
+  return false;
+}
+
 // First claim for an item wins. The lock stops two simultaneous submissions
-// from both claiming the same item.
+// from both claiming the same item. Each name may hold up to MAX_CLAIMS and must have RSVPed Yes.
 function claimSnack(p) {
   const item = String(p.item || "");
   if (!/^[a-z0-9-]{1,40}$/.test(item)) return text("invalid");
+  const name = clean(p.name, 100);
+  const token = String(p.token || "");
+  if (!name || !/^[a-z0-9]{8,40}$/.test(token)) return text("invalid");
+  if (!rsvpedYes(name)) return text("norsvp");
 
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
     const sheet = snackSheet();
-    const taken = sheet.getDataRange().getValues().slice(1).some((r) => r[2] === item);
-    if (taken) return text("taken");
+    const rows = sheet.getDataRange().getValues().slice(1);
+    if (rows.some((r) => r[2] === item)) return text("taken");
+    const mine = rows.filter((r) => String(r[1]).trim().toLowerCase() === name.toLowerCase()).length;
+    if (mine >= MAX_CLAIMS) return text("limit");
 
     const meal = MEALS.indexOf(p.meal) >= 0 ? p.meal : "Any";
 
@@ -138,8 +157,31 @@ function claimSnack(p) {
     const custom = isOther ? clean(p.custom, 80) : "";
     if (isOther && !custom) return text("invalid");
 
-    sheet.appendRow([new Date(), clean(p.name, 100), item, clean(p.ref, 40), meal, custom]);
+    sheet.appendRow([new Date(), name, item, clean(p.ref, 40), meal, custom, token]);
     return text("ok");
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Deletes the claim whose ref and secret token both match, freeing the item.
+function releaseSnack(p) {
+  const ref = String(p.ref || "");
+  const token = String(p.token || "");
+  if (!ref || !token) return text("invalid");
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = snackSheet();
+    const rows = sheet.getDataRange().getValues();
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][3]) === ref && String(rows[i][6]) === token) {
+        sheet.deleteRow(i + 1);
+        return text("ok");
+      }
+    }
+    return text("notfound");
   } finally {
     lock.releaseLock();
   }
@@ -155,6 +197,7 @@ function snackSheet() {
     // Tabs created before these columns existed get their headers filled in.
     if (sheet.getRange(1, 5).getValue() === "") sheet.getRange(1, 5).setValue("Meal");
     if (sheet.getRange(1, 6).getValue() === "") sheet.getRange(1, 6).setValue("Custom");
+    if (sheet.getRange(1, 7).getValue() === "") sheet.getRange(1, 7).setValue("Token");
   }
   return sheet;
 }

@@ -267,9 +267,13 @@
 
     /* ---- Meals ---- */
     .meals h3 { font-size: 1rem; margin: 0 0 0.75rem; color: var(--gold-soft); }
-    .meals dl { display: grid; grid-template-columns: auto 1fr; gap: 0.3rem 1.25rem; margin: 0; }
-    .meals dt { opacity: 0.7; font-variant-numeric: tabular-nums; }
-    .meals dd { margin: 0; }
+    .meal-grid { display: grid; gap: 0.6rem; margin: 0; }
+    .meal-row { display: grid; grid-template-columns: 5.2rem 1fr; gap: 0 0.9rem; padding: 0.55rem 0.7rem; border: 1px solid rgba(217, 164, 65, 0.2); border-radius: 8px; background: rgba(0, 0, 0, 0.18); }
+    .meal-time { opacity: 0.7; font-variant-numeric: tabular-nums; }
+    .meal-name { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; color: var(--gold-soft); font-family: var(--display); }
+    .meal-food { grid-column: 2; margin: 0.25rem 0 0; padding: 0; list-style: none; font-size: 0.9rem; }
+    .meal-food:empty { display: none; }
+    .meal-food .who { opacity: 0.65; }
 
     /* ---- Snack catalog ---- */
     .snack-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -292,6 +296,15 @@
     .item.claimed { opacity: 0.45; text-decoration: line-through; }
     .item .who { font-size: 0.85rem; text-decoration: none; display: inline-block; }
     .other input[type="text"] { margin-top: 0.6rem; }
+    .notice { margin: 0 0 1rem; padding: 0.7rem 1rem; border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 6px; background: rgba(0, 0, 0, 0.25); }
+    .refresh-row { display: flex; align-items: center; gap: 0.8rem; margin: 0 0 1.25rem; }
+    .refresh-row #coverage { margin: 0; flex: 1; }
+    .btn-small { padding: 0.35rem 0.9rem; font-size: 0.75rem; white-space: nowrap; }
+    #updated { font-size: 0.8rem; opacity: 0.65; }
+    #mine { margin: 0 0 1.25rem; padding: 0.8rem 1rem; border: 1px solid rgba(217, 164, 65, 0.3); border-radius: 8px; background: rgba(0, 0, 0, 0.18); }
+    #mine h3 { margin: 0 0 0.5rem; font-size: 1rem; color: var(--gold-soft); }
+    #mine ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.4rem; }
+    #mine li { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
     #others { margin-top: 0.9rem; }
     #others ul { margin: 0.4rem 0 0; padding-left: 1.2rem; }
     #snack-submit { justify-self: end; min-width: 14rem; }
@@ -467,8 +480,8 @@
           <figure class="stand hobbits">
             <img src="assets/hobbits_standing.png" alt="Pixel art of the four hobbits standing in a row">
           </figure>
-          <h3>Hobbit meal times</h3>
-          <dl id="meal-schedule"></dl>
+          <h3>Hobbit meals</h3>
+          <div id="meal-schedule" class="meal-grid"></div>
         </section>
       </div>
 
@@ -477,8 +490,17 @@
           <img src="assets/fellowship_standing.png" alt="Pixel art of the nine members of the Fellowship standing together">
         </figure>
         <h2>Snack Signup</h2>
-        <p class="intro">Twelve hours is a long road. Pick one thing to bring. Taken items are grayed out.</p>
-        <p id="coverage" role="status"></p>
+        <p class="notice">There is a Bundpris across the street, so if we're missing anything we can just buy whatever we need.</p>
+        <p class="intro">Twelve hours is a long road. Pick up to three things to bring (RSVP Yes above first, using the same name). Taken items are grayed out.</p>
+        <div class="refresh-row">
+          <p id="coverage" role="status"></p>
+          <span id="updated"></span>
+          <button type="button" id="refresh" class="btn-small">Refresh list</button>
+        </div>
+        <div id="mine" hidden>
+          <h3>Your claims</h3>
+          <ul id="mine-list"></ul>
+        </div>
 
         <form id="snack-form">
           <div class="snack-row">
@@ -596,6 +618,7 @@
           body: new URLSearchParams(new FormData(form)),
         });
         form.reset();
+        fillNames();
         status.textContent = "Thanks! Your RSVP is in.";
       } catch (err) {
         status.className = "error";
@@ -605,6 +628,24 @@
       }
       button.disabled = false;
     });
+
+    // ---- Remember the guest's name across the three forms ----
+    const NAME_IDS = ["name", "snack-name", "fav-name"];
+    function fillNames() {
+      let saved = "";
+      try { saved = localStorage.getItem("guestName") || ""; } catch (err) {}
+      for (const id of NAME_IDS) {
+        const el = document.getElementById(id);
+        if (saved && !el.value) el.value = saved;
+      }
+    }
+    for (const id of NAME_IDS) {
+      document.getElementById(id).addEventListener("input", (e) => {
+        try { localStorage.setItem("guestName", e.target.value); } catch (err) {}
+        for (const other of NAME_IDS) document.getElementById(other).value = e.target.value;
+      });
+    }
+    fillNames();
 
     // ---- Snack signup ----
     // Item ids are stored in the sheet; keep them stable once people have claimed them.
@@ -653,6 +694,7 @@
     ];
 
     // Hobbit meal schedule. Names are stored in the sheet and validated server-side (Code.gs MEALS).
+    const MAX_CLAIMS = 3; // keep in sync with Code.gs
     const MEALS = [
       ["Breakfast", "8:30 AM"],
       ["Second Breakfast", "9:30 AM"],
@@ -666,19 +708,24 @@
     const mealSelect = document.getElementById("meal");
     const mealSchedule = document.getElementById("meal-schedule");
     mealSelect.append(new Option("Any meal", ""));
-    const mealBadges = new Map();
-    for (const [name, time] of MEALS) {
-      const dt = document.createElement("dt");
-      dt.textContent = time;
-      const dd = document.createElement("dd");
-      dd.textContent = name + " ";
-      const badge = document.createElement("span");
-      badge.className = "badge needed";
-      badge.textContent = "needed";
-      mealBadges.set(name, badge);
-      dd.append(badge);
-      mealSchedule.append(dt, dd);
-      mealSelect.append(new Option(`${name} (${time})`, name));
+    for (const [name, time] of MEALS) mealSelect.append(new Option(`${name} (${time})`, name));
+
+    // Label lookup so the meal grid and "your claims" can name a claimed item.
+    const ITEM_LABELS = new Map(CATALOG.flatMap((cat) => cat.items));
+    const claimLabel = (c) => ITEM_LABELS.get(c.item) || c.custom || c.item;
+
+    // My claims are remembered per browser: the secret token is what lets me release one.
+    const MY_KEY = "myClaims";
+    function myClaims() {
+      try { return JSON.parse(localStorage.getItem(MY_KEY) || "{}"); } catch (err) { return {}; }
+    }
+    function rememberClaim(ref, token) {
+      try { localStorage.setItem(MY_KEY, JSON.stringify({ ...myClaims(), [ref]: token })); } catch (err) {}
+    }
+    function forgetClaim(ref) {
+      const all = myClaims();
+      delete all[ref];
+      try { localStorage.setItem(MY_KEY, JSON.stringify(all)); } catch (err) {}
     }
 
     const snackForm = document.getElementById("snack-form");
@@ -694,12 +741,96 @@
     // Typing in the free-text box selects "Something else".
     otherText.addEventListener("input", () => { otherRadio.checked = true; });
 
+    let lastClaims = [];
+
     async function fetchClaims() {
       const res = await fetch(`${ENDPOINT}?action=claims&t=${Date.now()}`);
       return (await res.json()).claims;
     }
 
+    // One row per meal: time, covered/needed badge and what is claimed for it.
+    // "Any meal" claims have no slot, so they get their own row at the end.
+    function renderMeals(claims) {
+      const rows = [...MEALS.map(([name, time]) => [name, time]), ["Any meal", ""]];
+      mealSchedule.replaceChildren(...rows.map(([name, time]) => {
+        const here = claims.filter((c) => (time ? c.meal === name : !MEALS.some(([m]) => m === c.meal)));
+        const row = document.createElement("div");
+        row.className = "meal-row";
+
+        const t = document.createElement("span");
+        t.className = "meal-time";
+        t.textContent = time;
+        const n = document.createElement("span");
+        n.className = "meal-name";
+        n.textContent = name + " ";
+        if (time) {
+          const badge = document.createElement("span");
+          badge.className = "badge " + (here.length ? "covered" : "needed");
+          badge.textContent = here.length ? "covered" : "needed";
+          n.append(badge);
+        }
+        const food = document.createElement("ul");
+        food.className = "meal-food";
+        for (const c of here) {
+          const li = document.createElement("li");
+          li.append(document.createTextNode(claimLabel(c) + " "));
+          const who = document.createElement("span");
+          who.className = "who";
+          who.textContent = `(${c.name})`;
+          li.append(who);
+          food.append(li);
+        }
+        row.append(t, n, food);
+        return row;
+      }));
+    }
+
+    // Claims whose secret token lives in this browser, each with a Release button.
+    const mineEl = document.getElementById("mine");
+    const mineList = document.getElementById("mine-list");
+    function renderMine(claims) {
+      const tokens = myClaims();
+      const mine = claims.filter((c) => tokens[c.ref]);
+      mineEl.hidden = mine.length === 0;
+      mineList.replaceChildren(...mine.map((c) => {
+        const li = document.createElement("li");
+        const span = document.createElement("span");
+        span.textContent = claimLabel(c) + (MEALS.some(([m]) => m === c.meal) ? ` (${c.meal})` : "");
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn-small";
+        btn.textContent = "Release";
+        btn.addEventListener("click", () => releaseClaim(c, btn));
+        li.append(span, btn);
+        return li;
+      }));
+    }
+
+    async function releaseClaim(c, btn) {
+      btn.disabled = true;
+      snackStatus.className = "";
+      snackStatus.textContent = "Releasing...";
+      try {
+        await fetch(ENDPOINT, {
+          method: "POST",
+          mode: "no-cors",
+          body: new URLSearchParams({ type: "release", ref: c.ref, token: myClaims()[c.ref] }),
+        });
+        const claims = await fetchClaims();
+        if (claims.some((x) => x.ref === c.ref)) throw new Error("still there");
+        forgetClaim(c.ref);
+        saveClaims(claims);
+        renderCatalog(claims);
+        snackStatus.textContent = `Released ${claimLabel(c)}. It's free for someone else now.`;
+      } catch (err) {
+        btn.disabled = false;
+        snackStatus.className = "error";
+        snackStatus.textContent = "Couldn't release that. Please try again.";
+      }
+    }
+
     function renderCatalog(claims) {
+      lastClaims = claims;
       const byItem = new Map(claims.map((c) => [c.item, c]));
       const needed = [];
       const selected = snackForm.querySelector('input[name="item"]:checked')?.value;
@@ -748,12 +879,8 @@
         catalogEl.append(section);
       }
 
-      // A meal counts as covered once any claim names it; "Any meal" claims don't count.
-      for (const [name, badge] of mealBadges) {
-        const covered = claims.some((c) => c.meal === name);
-        badge.className = "badge " + (covered ? "covered" : "needed");
-        badge.textContent = covered ? "covered" : "needed";
-      }
+      renderMeals(claims);
+      renderMine(claims);
 
       // Free-text claims never gray anything out; just list them.
       const others = claims.filter((c) => String(c.item).startsWith("other-") && c.custom);
@@ -777,22 +904,40 @@
       try { localStorage.setItem("claims", JSON.stringify(claims)); } catch (err) {}
     }
 
-    async function loadCatalog() {
-      let cached = [];
-      try { cached = JSON.parse(localStorage.getItem("claims") || "[]"); } catch (err) {}
-      renderCatalog(cached);
-      coverageEl.className = "";
-      coverageEl.textContent = "Checking what's already taken...";
+    const updatedEl = document.getElementById("updated");
+    const refreshButton = document.getElementById("refresh");
+    let busy = false; // a submit, release or refresh is in flight
+
+    async function loadCatalog({ first = false } = {}) {
+      if (busy) return;
+      busy = true;
+      refreshButton.disabled = true;
+      if (first) {
+        let cached = [];
+        try { cached = JSON.parse(localStorage.getItem("claims") || "[]"); } catch (err) {}
+        renderCatalog(cached);
+        coverageEl.className = "";
+        coverageEl.textContent = "Checking what's already taken...";
+      }
 
       try {
         const claims = await fetchClaims();
         saveClaims(claims);
         renderCatalog(claims);
+        updatedEl.textContent = "Updated " + new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       } catch (err) {
         coverageEl.className = "needed";
         coverageEl.textContent = "Couldn't check what's taken. You can still pick; duplicates are blocked when you submit.";
+      } finally {
+        busy = false;
+        refreshButton.disabled = false;
       }
     }
+
+    refreshButton.addEventListener("click", () => loadCatalog());
+    // Pick up other guests' claims every 30 seconds, but not while the tab is in the background.
+    setInterval(() => { if (!document.hidden) loadCatalog(); }, 30000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) loadCatalog(); });
 
     snackForm.addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -822,9 +967,20 @@
       } else {
         data.delete("custom");
       }
+      const name = String(data.get("name")).trim();
+      const owned = lastClaims.filter((c) => String(c.name).trim().toLowerCase() === name.toLowerCase()).length;
+      if (owned >= MAX_CLAIMS) {
+        snackStatus.className = "error";
+        snackStatus.textContent = `That's ${MAX_CLAIMS} items already. Release one below to swap it.`;
+        return;
+      }
+      // The token is the secret that lets this browser release the claim later; the server never publishes it.
+      const token = Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 12);
       data.append("type", "snack");
       data.append("ref", ref);
+      data.append("token", token);
 
+      busy = true;
       snackButton.disabled = true;
       snackStatus.textContent = "Claiming...";
       try {
@@ -834,22 +990,27 @@
         renderCatalog(claims);
         const mine = claims.find((c) => c.item === item);
         if (mine && mine.ref === ref) {
-          snackStatus.textContent = "You're on the list. Thank you!";
+          rememberClaim(ref, token);
+          renderMine(claims);
+          const when = MEALS.some(([m]) => m === mine.meal) ? ` for ${mine.meal}` : "";
+          snackStatus.textContent = `You're bringing: ${claimLabel(mine)}${when}. Thank you!`;
+          snackForm.querySelectorAll('input[name="item"]:checked').forEach((r) => { r.checked = false; });
           if (isOther) otherText.value = "";
         } else {
           snackStatus.className = "error";
-          snackStatus.textContent = isOther
-            ? "That didn't go through. Please try again."
-            : "Someone else just claimed that one. Please pick another.";
+          if (mine) snackStatus.textContent = "Someone else just claimed that one. Please pick another.";
+          else snackStatus.textContent = "That didn't go through. Make sure you RSVPed Yes above with this exact name, then try again.";
         }
       } catch (err) {
         snackStatus.className = "error";
         snackStatus.textContent = "Something went wrong. Please try again.";
         snackButton.disabled = false;
+      } finally {
+        busy = false;
       }
     });
 
-    loadCatalog();
+    loadCatalog({ first: true });
 
     // ---- Random quote ----
     // Quotes live in assets/quotes.json: [{ "text": "...", "who": "...", "source": "..." }]

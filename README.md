@@ -18,6 +18,8 @@ Responses appear as rows in the first sheet tab. If you edit `Code.gs` later, us
 
 The snack catalog (`CATALOG` in `index.html`) is grouped into savory snacks, sweet snacks, savory drinks, sweet drinks, and caffeine. Claims are stored in a `Snacks` tab that the script creates automatically. The page reads claims back, grays out taken items, and flags any category with no claims as "needed". The server rejects a second claim for the same item, so simultaneous submissions can't double up.
 
+Each guest name can hold up to 3 claims (`MAX_CLAIMS` in `Code.gs` and `index.html`), and must have an RSVP with "Yes" under the same name (latest RSVP row wins). A claim carries a secret token (stored in a `Token` column, never returned by the claims endpoint, kept in the claimer's browser) so they can release it from the "Your claims" list. Claims made before the token existed can't be released from the page; delete the row in the sheet. The page re-reads claims every 30 seconds (paused while the tab is hidden) and has a "Refresh list" button.
+
 Guests also pick which hobbit meal their item is for (`MEALS` in `index.html`, mirrored in `Code.gs`), saved in a `Meal` column. Breakfast is 8:30 AM and Second Breakfast 9:30 AM; the rest follow the traditional schedule.
 
 ## Fellowship Favorites
